@@ -5,6 +5,7 @@ import session from 'express-session';
 import pool from './config/database.js';
 import passport from './config/passport.js';
 import authRoutes from './routes/auth.js';
+import newsRoutes from './routes/news.js';
 
 dotenv.config();
 
@@ -43,6 +44,8 @@ app.get('/db-test', async (req, res) => {
   });
 
 app.use('/api/auth', authRoutes);
+
+app.use('/api/news', newsRoutes);
 
 
 app.listen(PORT, () => {

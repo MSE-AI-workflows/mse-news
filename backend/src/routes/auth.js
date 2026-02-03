@@ -7,7 +7,7 @@ const router = express.Router();
 router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 
 router.get('/google/callback', passport.authenticate('google', { failureRedirect: 'http://localhost:5173/login' }), (req, res) => {
-    res.redirect('http://localhost:5173/dashboard');
+    res.redirect('http://localhost:5173/dashboard/all-news');
 });
 
 router.get('/logout', (req, res) => {
