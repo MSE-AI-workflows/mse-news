@@ -61,9 +61,11 @@ function AppContent() {
             path="/dashboard/profile"
             element={
               <ProtectedRoute>
-                <LayoutWrapper>
-                  <ProfilePage />
-                </LayoutWrapper>
+                <FilterProvider>
+                  <LayoutWrapper>
+                    <ProfilePage />
+                  </LayoutWrapper>
+                </FilterProvider>
               </ProtectedRoute>
             }
           />

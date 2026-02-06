@@ -17,9 +17,12 @@ export default function Layout({ children, user, onLogout, onNavigate, activeVie
           <div className="flex items-center gap-4 cursor-pointer" onClick={() => onNavigate('feed')}>
           <NCSU_LOGO_SVG />
           </div>
-          <h2 className="absolute left-1/2 -translate-x-1/2 font-slab font-bold text-lg md:text-xl uppercase tracking-tight pointer-events-none " >
-      MSE News Portal
-    </h2>
+          <h2
+  onClick={() => onNavigate('feed')}
+  className="absolute left-1/2 -translate-x-1/2 font-slab font-bold text-lg md:text-xl uppercase tracking-tight cursor-pointer hover:opacity-90 transition-opacity"
+>
+  MSE News Portal
+</h2>
     
           <div className='hidden md:flex items-center gap-6'>
             <button
@@ -29,12 +32,14 @@ export default function Layout({ children, user, onLogout, onNavigate, activeVie
                 <PlusSquare size={20} />
                 <span className='font-bold text-sm uppercase'>Upload News</span>
             </button>
-            <button 
-              onClick={() => onNavigate('profile')}
+            <button
+              onClick={() => onNavigate(activeView === 'feed' ? 'profile' : 'feed')}
               className={`flex items-center gap-2 hover:text-white/80 transition-colors ${activeView === 'profile' ? 'underline decoration-2 underline-offset-4' : ''}`}
             >
-              <UserIcon size={20} />
-              <span className="font-bold text-sm uppercase">Profile</span>
+              {activeView === 'feed' ? <UserIcon size={20} /> : <Home size={20} />}
+              <span className="font-bold text-sm uppercase">
+                {activeView === 'feed' ? 'My News' : 'All News'}
+              </span>
             </button>
             <button
             className='p-2 hover:bg-white/10 rounded-full transition-colors'
@@ -53,8 +58,11 @@ export default function Layout({ children, user, onLogout, onNavigate, activeVie
         <button onClick={() => onNavigate('post')} className={activeView === 'profile' ? 'text-[#CC0000]' : 'text-gray-400'}>
           <PlusSquare size={24} />
         </button>
-        <button onClick={() => onNavigate('profile')} className={activeView === 'profile' ? 'text-[#CC0000]' : 'text-gray-400'}>
-          <UserIcon size={24} />
+        <button
+          onClick={() => onNavigate(activeView === 'feed' ? 'profile' : 'feed')}
+          className={activeView === 'profile' ? 'text-[#CC0000]' : 'text-gray-400'}
+        >
+          {activeView === 'feed' ? <UserIcon size={24} /> : <Home size={24} />}
         </button>
         <button onClick={onLogout} className="text-gray-400">
           <LogOut size={24} />

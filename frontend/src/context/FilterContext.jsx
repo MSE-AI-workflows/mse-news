@@ -4,6 +4,9 @@ const defaultFilters = {
   search: '',
   faculty: 'All Faculty',
   dateRange: 'all',
+  orderBy: 'newest',
+  dateStart: '',
+  dateEnd: ''
 };
 
 const FilterContext = createContext();

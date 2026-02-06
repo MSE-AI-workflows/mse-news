@@ -1,11 +1,21 @@
 import { useAuth } from '../context/AuthContext';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { Search, SlidersHorizontal } from 'lucide-react';
 import api from '../api/client';
 import NewsCard from '../components/NewsCard';
+import { useFilters } from '../context/FilterContext';
+
+const ORDER_BY_OPTIONS = [
+  { value: 'newest', label: 'Newest first' },
+  { value: 'oldest', label: 'Oldest first' },
+  { value: 'title-az', label: 'Title A–Z' },
+  { value: 'title-za', label: 'Title Z–A' },
+];
 
 export default function ProfilePage() {
     const { user } = useAuth();
+    const { filters, setFilters } = useFilters();
     const [searchParams, setSearchParams] = useSearchParams();
     const [news, setNews] = useState([]);
     const [expandedId, setExpandedId] = useState(null);
@@ -114,23 +124,119 @@ export default function ProfilePage() {
     };
     const removeExternalLink = (i) => setExternalLinks(externalLinks.length > 1 ? externalLinks.filter((_, idx) => idx !== i) : [{ label: '', url: '' }]);
 
-    return (
-        <div className="min-h-screen bg-[#f2f2f2] font-sans">
-            <div className="flex-1 min-w-0 px-4 py-8">
-                <h1 className="text-2xl font-slab font-bold text-ncsu-gray mb-6 uppercase tracking-tight">Profile</h1>
+    const filteredNews = useMemo(() => {
+        let result = [...news];
 
-                <div className="max-w-3xl mx-auto space-y-8">
-                    {/* Profile info card */}
-                    <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
-                        <p className="text-ncsu-gray font-sans"><strong className="font-slab">Name:</strong> {user?.name}</p>
-                        <p className="text-ncsu-gray font-sans mt-2"><strong className="font-slab">Email:</strong> {user?.email}</p>
+        const q = (filters.search || '').toLowerCase().trim();
+        if (q) {
+            result = result.filter((item) => {
+                const title = (item.title || '').toLowerCase();
+                const content = (item.content || '').toLowerCase();
+                const tags = Array.isArray(item.hashtags) ? item.hashtags.join(' ').toLowerCase() : '';
+                return title.includes(q) || content.includes(q) || tags.includes(q);
+            });
+        }
+
+        const now = new Date();
+        const dateRange = filters.dateRange || 'all';
+        if (dateRange !== 'all') {
+            result = result.filter((item) => {
+                const d = new Date(item.created_at);
+                if (dateRange === 'today') return d.toDateString() === now.toDateString();
+                if (dateRange === 'week') {
+                    const weekAgo = new Date(now);
+                    weekAgo.setDate(weekAgo.getDate() - 7);
+                    return d >= weekAgo;
+                }
+                if (dateRange === 'month') {
+                    const monthAgo = new Date(now);
+                    monthAgo.setMonth(monthAgo.getMonth() - 1);
+                    return d >= monthAgo;
+                }
+                return true;
+            });
+        }
+
+        const orderBy = filters.orderBy || 'newest';
+        result.sort((a, b) => {
+            if (orderBy === 'newest') return new Date(b.created_at) - new Date(a.created_at);
+            if (orderBy === 'oldest') return new Date(a.created_at) - new Date(b.created_at);
+            const ta = (a.title || '').toLowerCase();
+            const tb = (b.title || '').toLowerCase();
+            if (orderBy === 'title-az') return ta.localeCompare(tb);
+            if (orderBy === 'title-za') return tb.localeCompare(ta);
+            return 0;
+        });
+
+        return result;
+    }, [news, filters.search, filters.dateRange, filters.orderBy]);
+
+    return (
+        <div className="min-h-screen bg-[#f2f2f2] font-sans flex flex-col lg:flex-row">
+            {/* Filters sidebar */}
+            <aside className="shrink-0 w-full lg:w-72 bg-white border-b lg:border-b-0 lg:border-r border-gray-200 lg:sticky lg:top-20 lg:self-start lg:h-[calc(100vh-5rem)] lg:overflow-y-auto">
+                <div className="p-4 space-y-4">
+                    <div className="flex items-center gap-2 text-ncsu-gray font-bold text-xs uppercase tracking-wide">
+                        <SlidersHorizontal size={16} />
+                        <span>Filters</span>
                     </div>
 
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Search</label>
+                        <div className="relative">
+                            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                            <input
+                                type="text"
+                                placeholder="Title, description, hashtags..."
+                                value={filters.search || ''}
+                                onChange={(e) => setFilters((prev) => ({ ...prev, search: e.target.value }))}
+                                className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ncsu-red"
+                            />
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Date range</label>
+                        <div className="flex flex-wrap gap-2">
+                            {['all', 'today', 'week', 'month'].map((r) => (
+                                <button
+                                    key={r}
+                                    type="button"
+                                    onClick={() => setFilters((prev) => ({ ...prev, dateRange: r }))}
+                                    className={`px-3 py-1.5 text-xs font-bold uppercase rounded-full border transition-all ${
+                                        (filters.dateRange || 'all') === r ? 'bg-ncsu-red text-white border-ncsu-red' : 'text-gray-500 border-gray-200 hover:border-ncsu-red hover:text-ncsu-red'
+                                    }`}
+                                >
+                                    {r}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Order by</label>
+                        <select
+                            value={filters.orderBy || 'newest'}
+                            onChange={(e) => setFilters((prev) => ({ ...prev, orderBy: e.target.value }))}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ncsu-red"
+                        >
+                            {ORDER_BY_OPTIONS.map((o) => (
+                                <option key={o.value} value={o.value}>{o.label}</option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+            </aside>
+
+            {/* Main content */}
+            <div className="flex-1 min-w-0 px-4 py-8">
+
+                <div className="max-w-3xl mx-auto space-y-8">
                     {/* My News feed */}
                     <div>
                         <h2 className="text-xl font-slab font-bold text-ncsu-gray mb-4 uppercase tracking-tight">My News</h2>
                         <div className="grid grid-cols-1 gap-4 w-full">
-                            {news.map((item) => (
+                            {filteredNews.map((item) => (
                                 <NewsCard
                                     key={item.id}
                                     item={item}
@@ -139,6 +245,7 @@ export default function ProfilePage() {
                                     showActions
                                     onEdit={handleEdit}
                                     onDelete={handleDelete}
+                                    searchQuery={filters.search?.trim() || ''}
                                 />
                             ))}
                         </div>

@@ -6,6 +6,22 @@ function formatDate(dateString) {
   });
 }
 
+function highlightText(text, query) {
+  if (!query || !text || typeof text !== 'string') return text;
+  const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp(`(${escaped})`, 'gi');
+  const parts = String(text).split(regex);
+  return parts.map((part, i) => {
+    const lowerPart = part.toLowerCase();
+    const lowerQuery = query.toLowerCase();
+    return lowerPart === lowerQuery ? (
+      <mark key={i} className="bg-yellow-200 text-gray-900 rounded px-0.5">{part}</mark>
+    ) : (
+      part
+    );
+  });
+}
+
 export default function NewsCard({
   item,
   expanded,
@@ -13,6 +29,7 @@ export default function NewsCard({
   showActions = false,
   onEdit,
   onDelete,
+  searchQuery = ''
 }) {
   const isExpanded = expanded === item.id;
 
@@ -28,7 +45,7 @@ export default function NewsCard({
       {/* Red title band */}
       <div className="bg-ncsu-red text-white px-5 py-4 flex-shrink-0">
         <h3 className="text-lg font-slab font-bold line-clamp-2">
-          {item.title}
+          {searchQuery ? highlightText(item.title, searchQuery) : item.title }
         </h3>
       </div>
 
@@ -58,14 +75,14 @@ export default function NewsCard({
             isExpanded ? '' : 'line-clamp-4'
           }`}
         >
-          {item.content}
+          {searchQuery ? highlightText(item.content, searchQuery) : item.content }
         </p>
 
         {Array.isArray(item.hashtags) && item.hashtags.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mt-3">
             {item.hashtags.map((tag, i) => (
               <span key={i} className="px-2 py-0.5 rounded text-xs font-medium bg-ncsu-red/10 text-ncsu-red">
-                #{tag}
+                #{searchQuery ? highlightText(tag, searchQuery) : tag }
               </span>
             ))}
           </div>

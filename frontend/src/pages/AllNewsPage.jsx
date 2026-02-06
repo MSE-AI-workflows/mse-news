@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Search, SlidersHorizontal } from 'lucide-react';
 import api from '../api/client';
 import NewsCard from '../components/NewsCard';
@@ -22,6 +22,81 @@ export default function AllNewsPage() {
       console.error('Error fetching news:', error);
     }
   };
+
+  const filteredNews = useMemo(() => {
+    let result = [...news];
+  
+    // Search (title, content, hashtags, author)
+    const q = (filters.search || '').toLowerCase().trim();
+    if (q) {
+      result = result.filter((item) => {
+        const title = (item.title || '').toLowerCase();
+        const content = (item.content || '').toLowerCase();
+        const tags = Array.isArray(item.hashtags) ? item.hashtags.join(' ').toLowerCase() : '';
+        const author = (item.author_name || '').toLowerCase();
+        return title.includes(q) || content.includes(q) || tags.includes(q) || author.includes(q);
+      });
+    }
+  
+    // Faculty
+    const faculty = filters.faculty || 'All Faculty';
+    if (faculty === 'Others') {
+      const facultyNames = FACULTIES.filter((f) => f !== 'All Faculty' && f !== 'Others');
+      result = result.filter((item) => {
+        const author = (item.author_name || '').trim();
+        return author && !facultyNames.includes(author);
+      });
+    } else if (faculty !== 'All Faculty') {
+      result = result.filter((item) => (item.author_name || '').trim() === faculty);
+    }
+  
+    // Date: quick buttons or custom range
+    const dateRange = filters.dateRange || 'all';
+    const dateStart = filters.dateStart;
+    const dateEnd = filters.dateEnd;
+    const useCustomRange = dateStart && dateEnd;
+  
+    if (useCustomRange) {
+      const start = new Date(dateStart);
+      const end = new Date(dateEnd);
+      end.setHours(23, 59, 59, 999);
+      result = result.filter((item) => {
+        const d = new Date(item.created_at);
+        return d >= start && d <= end;
+      });
+    } else if (dateRange !== 'all') {
+      const now = new Date();
+      result = result.filter((item) => {
+        const d = new Date(item.created_at);
+        if (dateRange === 'today') return d.toDateString() === now.toDateString();
+        if (dateRange === 'week') {
+          const weekAgo = new Date(now);
+          weekAgo.setDate(weekAgo.getDate() - 7);
+          return d >= weekAgo;
+        }
+        if (dateRange === 'month') {
+          const monthAgo = new Date(now);
+          monthAgo.setMonth(monthAgo.getMonth() - 1);
+          return d >= monthAgo;
+        }
+        return true;
+      });
+    }
+  
+    // Order by
+    const orderBy = filters.orderBy || 'newest';
+    result.sort((a, b) => {
+      if (orderBy === 'newest') return new Date(b.created_at) - new Date(a.created_at);
+      if (orderBy === 'oldest') return new Date(a.created_at) - new Date(b.created_at);
+      const ta = (a.title || '').toLowerCase();
+      const tb = (b.title || '').toLowerCase();
+      if (orderBy === 'title-az') return ta.localeCompare(tb);
+      if (orderBy === 'title-za') return tb.localeCompare(ta);
+      return 0;
+    });
+  
+    return result;
+  }, [news, filters.search, filters.faculty, filters.dateRange, filters.dateStart, filters.dateEnd, filters.orderBy]);
 
   return (
     <div className="min-h-screen bg-[#f2f2f2] font-sans flex flex-col lg:flex-row">
@@ -61,6 +136,38 @@ export default function AllNewsPage() {
           </div>
 
           <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Order by</label>
+            <select
+              value={filters.orderBy || 'newest'}
+              onChange={(e) => setFilters((prev) => ({ ...prev, orderBy: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ncsu-red"
+            >
+              <option value="newest">Newest first</option>
+              <option value="oldest">Oldest first</option>
+              <option value="title-az">Title A-Z</option>
+              <option value="title-za">Title Z-A</option>
+            </select>
+          </div>
+
+          <div>
+  <label className="block text-sm font-medium text-gray-700 mb-2">Custom date range</label>
+  <div className="space-y-2">
+    <input
+      type="date"
+      value={filters.dateStart || ''}
+      onChange={(e) => setFilters((prev) => ({ ...prev, dateStart: e.target.value }))}
+      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ncsu-red"
+    />
+    <input
+      type="date"
+      value={filters.dateEnd || ''}
+      onChange={(e) => setFilters((prev) => ({ ...prev, dateEnd: e.target.value }))}
+      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ncsu-red"
+    />
+  </div>
+</div>
+
+          <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Date range</label>
             <div className="flex flex-wrap gap-2">
               {['all', 'today', 'week', 'month'].map((r) => (
@@ -84,24 +191,28 @@ export default function AllNewsPage() {
 
       {/* Main feed */}
       <div className="flex-1 min-w-0 px-4 py-8">
-        <h1 className="text-2xl font-slab font-bold text-ncsu-gray mb-6 uppercase tracking-tight">List All News</h1>
 
         <div className="grid grid-cols-1 gap-4 w-full max-w-3xl mx-auto">
-          {news.map((item) => (
+          {filteredNews.map((item) => (
             <NewsCard
               key={item.id}
               item={item}
               expanded={expandedId}
               onToggleExpand={setExpandedId}
+              searchQuery={filters.search?.trim() || ''}
             />
           ))}
         </div>
 
-        {news.length === 0 && (
-          <div className="text-center py-16">
-            <p className="text-ncsu-gray/80 text-lg">No news items yet.</p>
-          </div>
-        )}
+        {filteredNews.length === 0 && (
+  <div className="text-center py-16">
+    <p className="text-ncsu-gray/80 text-lg">
+      {news.length === 0
+        ? 'No news items yet.'
+        : 'No news match your filters. Try changing search, faculty, or date range.'}
+    </p>
+  </div>
+)}
       </div>
     </div>
   );
