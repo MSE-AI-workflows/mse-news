@@ -27,21 +27,19 @@ export default function NewsCard({
     >
       {/* Red title band */}
       <div className="bg-ncsu-red text-white px-5 py-4 flex-shrink-0">
-        <div className="flex justify-between items-start gap-2">
-          <h3 className="text-lg font-slab font-bold line-clamp-2 flex-1 min-w-0">
-            {item.title}
-          </h3>
-          <span
-            className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-medium ${
-              item.status === 'published'
-                ? 'bg-white/20 text-white'
-                : 'bg-white/10 text-white/90'
-            }`}
-          >
-            {item.status}
-          </span>
-        </div>
+        <h3 className="text-lg font-slab font-bold line-clamp-2">
+          {item.title}
+        </h3>
       </div>
+
+      {/* Images */}
+      {Array.isArray(item.image_urls) && item.image_urls.length > 0 && (
+        <div className="flex gap-2 overflow-x-auto no-scrollbar p-2 border-b border-gray-100">
+          {item.image_urls.map((url, i) => (
+            <img key={i} src={url} alt="" className="h-40 w-auto min-w-[120px] object-cover rounded" onClick={(e) => e.stopPropagation()} />
+          ))}
+        </div>
+      )}
 
       {/* Body */}
       <div className="p-5 flex-1 flex flex-col min-h-[180px]">
@@ -63,40 +61,86 @@ export default function NewsCard({
           {item.content}
         </p>
 
-        {!isExpanded && (
-          <p className="mt-3 text-ncsu-red text-sm font-semibold hover:underline">
-            Read more →
-          </p>
+        {Array.isArray(item.hashtags) && item.hashtags.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mt-3">
+            {item.hashtags.map((tag, i) => (
+              <span key={i} className="px-2 py-0.5 rounded text-xs font-medium bg-ncsu-red/10 text-ncsu-red">
+                #{tag}
+              </span>
+            ))}
+          </div>
         )}
 
-        {showActions && isExpanded && (onEdit || onDelete) && (
+        {Array.isArray(item.external_links) && item.external_links.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-3">
+            {item.external_links.map((link, i) => (
+              <a key={i} href={link.url} target="_blank" rel="noopener noreferrer" className="text-sm text-ncsu-red hover:underline" onClick={(e) => e.stopPropagation()}>
+                {link.label || link.url}
+              </a>
+            ))}
+          </div>
+        )}
+
+        {!isExpanded && (
           <div
-            className="mt-4 pt-4 border-t border-gray-200 flex gap-2"
+            className="mt-4 pt-4 border-t border-gray-200 flex justify-between items-center gap-4"
             onClick={(e) => e.stopPropagation()}
           >
-            {onEdit && (
-              <button
-                type="button"
-                onClick={() => onEdit(item)}
-                className="flex-1 bg-ncsu-red text-white px-3 py-2 rounded text-sm font-medium hover:opacity-90 transition-opacity"
-              >
-                Edit
-              </button>
-            )}
-            {onDelete && (
-              <button
-                type="button"
-                onClick={() => onDelete(item.id)}
-                className="flex-1 bg-ncsu-gray text-white px-3 py-2 rounded text-sm font-medium hover:opacity-90 transition-opacity"
-              >
-                Delete
-              </button>
+            <p className="text-ncsu-red text-sm font-semibold hover:underline">Read more →</p>
+            {showActions && (onEdit || onDelete) && (
+              <div className="flex gap-2">
+                {onEdit && (
+                  <button
+                    type="button"
+                    onClick={() => onEdit(item)}
+                    className="bg-ncsu-red text-white px-3 py-2 rounded text-sm font-medium hover:opacity-90 transition-opacity"
+                  >
+                    Edit
+                  </button>
+                )}
+                {onDelete && (
+                  <button
+                    type="button"
+                    onClick={() => onDelete(item.id)}
+                    className="bg-ncsu-gray text-white px-3 py-2 rounded text-sm font-medium hover:opacity-90 transition-opacity"
+                  >
+                    Delete
+                  </button>
+                )}
+              </div>
             )}
           </div>
         )}
 
-        {!showActions && isExpanded && (
-          <p className="mt-4 text-xs text-gray-500">Tap to collapse</p>
+        {isExpanded && (
+          <div
+            className="mt-4 pt-4 border-t border-gray-200 flex justify-between items-center gap-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="text-xs text-gray-500">Tap to collapse</p>
+            {showActions && (onEdit || onDelete) && (
+              <div className="flex gap-2">
+                {onEdit && (
+                  <button
+                    type="button"
+                    onClick={() => onEdit(item)}
+                    className="bg-ncsu-red text-white px-3 py-2 rounded text-sm font-medium hover:opacity-90 transition-opacity"
+                  >
+                    Edit
+                  </button>
+                )}
+                {onDelete && (
+                  <button
+                    type="button"
+                    onClick={() => onDelete(item.id)}
+                    className="bg-ncsu-gray text-white px-3 py-2 rounded text-sm font-medium hover:opacity-90 transition-opacity"
+                  >
+                    Delete
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         )}
       </div>
     </article>

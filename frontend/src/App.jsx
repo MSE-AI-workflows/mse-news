@@ -2,7 +2,6 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavig
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { FilterProvider } from './context/FilterContext';
 import LoginPage from './pages/LoginPage';
-import MyNewsPage from './pages/MyNewsPage';
 import AllNewsPage from './pages/AllNewsPage';
 import ProfilePage from './pages/ProfilePage';
 import Layout from './components/Layout';
@@ -22,14 +21,14 @@ function LayoutWrapper({ children }) {
 
   const onNavigate = (view) => {
     if (view === 'feed') navigate('/dashboard/all-news');
-    if (view === 'post') navigate('/dashboard/my-news');
+    if (view === 'post') navigate('/dashboard/profile?add=1');
     if (view === 'profile') navigate('/dashboard/profile');
     }
 
  const getActiveView = () => {
   if (location.pathname === '/dashboard/all-news') return 'feed';
-  if (location.pathname === '/dashboard/my-news') return 'post';
   if (location.pathname === '/dashboard/profile') return 'profile';
+  return null;
  } 
   return (
     <Layout user={user} onLogout={logout} onNavigate={onNavigate} activeView={getActiveView()}>
@@ -45,17 +44,7 @@ function AppContent() {
     <Router>
       <div className="min-h-screen flex flex-col">
         <Routes>
-          <Route path="/login" element={!user ? <LoginPage /> : <Navigate to="/dashboard/my-news" />} />
-          <Route
-            path="/dashboard/my-news"
-            element={
-              <ProtectedRoute>
-                <LayoutWrapper>
-                  <MyNewsPage />
-                </LayoutWrapper>
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/login" element={!user ? <LoginPage /> : <Navigate to="/dashboard/profile" />} />
           <Route
             path="/dashboard/all-news"
             element={
@@ -78,8 +67,8 @@ function AppContent() {
               </ProtectedRoute>
             }
           />
-          <Route path="/auth/callback" element={<Navigate to="/dashboard/my-news" />} />
-          <Route path="/" element={<Navigate to="/dashboard/my-news" />} />
+          <Route path="/auth/callback" element={<Navigate to="/dashboard/profile" />} />
+          <Route path="/" element={<Navigate to="/dashboard/profile" />} />
         </Routes>
       </div>
     </Router>

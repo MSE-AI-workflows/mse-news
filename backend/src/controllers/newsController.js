@@ -33,8 +33,8 @@ export async function getMyNews(req, res) {
               const externalLinksJson = Array.isArray(external_links) ? JSON.stringify(external_links) : (external_links == null ? null : JSON.stringify([]));
       
               const [result] = await pool.query(
-                  'INSERT INTO news_items (user_id, title, content, status, hashtags, image_urls, external_links) VALUES (?, ?, ?, ?, ?, ?, ?)',
-                  [userId, title, content, 'draft', hashtagsJson, imageUrlsJson, externalLinksJson]
+                  'INSERT INTO news_items (user_id, title, content, hashtags, image_urls, external_links) VALUES (?, ?, ?, ?, ?, ?)',
+                  [userId, title, content, hashtagsJson, imageUrlsJson, externalLinksJson]
               );
       
               const [newItem] = await pool.query('SELECT * FROM news_items WHERE id = ?', [result.insertId]);
