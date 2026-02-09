@@ -6,6 +6,7 @@ import pool from './config/database.js';
 import passport from './config/passport.js';
 import authRoutes from './routes/auth.js';
 import newsRoutes from './routes/news.js';
+import newsletterRoutes from './routes/newsletter.js';
 
 dotenv.config();
 
@@ -46,6 +47,7 @@ app.get('/db-test', async (req, res) => {
 app.use('/api/auth', authRoutes);
 
 app.use('/api/news', newsRoutes);
+app.use('/api/newsletter', newsletterRoutes);
 
 
 app.listen(PORT, () => {
