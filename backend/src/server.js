@@ -7,6 +7,9 @@ import passport from './config/passport.js';
 import authRoutes from './routes/auth.js';
 import newsRoutes from './routes/news.js';
 import newsletterRoutes from './routes/newsletter.js';
+import publicationsRoutes from './routes/publications.js';
+import linkPreviewRoutes from './routes/linkPreview.js';
+
 
 dotenv.config();
 
@@ -48,8 +51,8 @@ app.use('/api/auth', authRoutes);
 
 app.use('/api/news', newsRoutes);
 app.use('/api/newsletter', newsletterRoutes);
-
-
+app.use('/api/publications', publicationsRoutes);
+app.use('/api/link-preview', linkPreviewRoutes);
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });

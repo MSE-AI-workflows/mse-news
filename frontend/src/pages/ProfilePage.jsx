@@ -14,7 +14,6 @@ const ORDER_BY_OPTIONS = [
 ];
 
 export default function ProfilePage() {
-    const { user } = useAuth();
     const { filters, setFilters } = useFilters();
     const [searchParams, setSearchParams] = useSearchParams();
     const [news, setNews] = useState([]);
@@ -27,6 +26,21 @@ export default function ProfilePage() {
     const [externalLinks, setExternalLinks] = useState([{ label: '', url: '' }]);
     const [editingId, setEditingId] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [publications, setPublications] = useState([]);
+    const [linkedInUrl, setLinkedInUrl] = useState('');
+    const [isFetchingLinkedIn, setIsFetchingLinkedIn] = useState(false);
+    const [linkedInError, setLinkedInError] = useState(null);
+
+    const fetchPublications = async () => {
+        try {
+          const res = await api.get('/publications/my');
+          setPublications(res.data);
+        } catch (err) {
+          console.error('Error fetching publications:', err);
+        }
+      };
+
+
 
     const fetchNews = async () => {
         try {
@@ -39,6 +53,7 @@ export default function ProfilePage() {
 
     useEffect(() => {
         fetchNews();
+        fetchPublications();
     }, []);
 
     useEffect(() => {
@@ -55,7 +70,54 @@ export default function ProfilePage() {
         setImageUrls(['']);
         setExternalLinks([{ label: '', url: '' }]);
         setEditingId(null);
+        // Also clear LinkedIn import state after save/close
+        setLinkedInUrl('');
+        setLinkedInError(null);
+        setIsFetchingLinkedIn(false);
     };
+
+    const handleImportFromLinkedIn = async () => {
+        if (!linkedInUrl.trim()) return;
+      
+        try {
+          setIsFetchingLinkedIn(true);
+          setLinkedInError('');
+      
+          const res = await api.post('/link-preview/fetch-linkedin-post', {
+            url: linkedInUrl.trim(),
+          });
+      
+          const data = res.data;
+      
+          // We intentionally DO NOT set the title from LinkedIn,
+          // so the user can provide a custom news title.
+      
+          // 1) Content
+          if (data.content) {
+            setContent(data.content);
+          }
+      
+          // 2) Hashtags (array -> comma-separated string for input)
+          if (Array.isArray(data.hashtags) && data.hashtags.length > 0) {
+            setHashtags(data.hashtags.join(', '));
+          }
+      
+          // 3) Image URLs
+          if (Array.isArray(data.image_urls) && data.image_urls.length > 0) {
+            setImageUrls(data.image_urls);
+          }
+      
+          // 4) External links
+          if (Array.isArray(data.external_links) && data.external_links.length > 0) {
+            setExternalLinks(data.external_links);
+          }
+        } catch (err) {
+          console.error('Error importing from LinkedIn:', err);
+          setLinkedInError('Could not fetch details from that LinkedIn URL.');
+        } finally {
+          setIsFetchingLinkedIn(false);
+        }
+      };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -255,6 +317,29 @@ export default function ProfilePage() {
                             </div>
                         )}
                     </div>
+
+                    {/* My Publications feed (read-only, pulled from publications DB) */}
+                    <div>
+                        <h2 className="text-xl font-slab font-bold text-ncsu-gray mb-4 uppercase tracking-tight">My Publications</h2>
+                        {publications.length > 0 ? (
+                            <div className="grid grid-cols-1 gap-4 w-full">
+                                {publications.map((item) => (
+                                    <NewsCard
+                                        key={item.id}
+                                        item={item}
+                                        expanded={expandedId}
+                                        onToggleExpand={setExpandedId}
+                                        showActions={false}
+                                        searchQuery={filters.search?.trim() || ''}
+                                    />
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-sm text-gray-500">
+                                No publications found for your profile yet.
+                            </p>
+                        )}
+                    </div>
                 </div>
             </div>
 
@@ -267,6 +352,34 @@ export default function ProfilePage() {
                                 {editingId ? 'Edit News' : 'Add your News'}
                             </h2>
                             <form onSubmit={handleSubmit}>
+                                {/* Optional: import data from a LinkedIn post to prefill this form */}
+                                <div className="mb-4">
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Import from LinkedIn (optional)
+                                    </label>
+                                    <div className="flex flex-col gap-2 sm:flex-row">
+                                        <input
+                                            type="url"
+                                            value={linkedInUrl}
+                                            onChange={(e) => setLinkedInUrl(e.target.value)}
+                                            placeholder="Paste LinkedIn post URL"
+                                            className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-ncsu-red"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={handleImportFromLinkedIn}
+                                            disabled={!linkedInUrl || isFetchingLinkedIn}
+                                            className="px-4 py-2 bg-ncsu-red text-white rounded-md text-sm disabled:opacity-50"
+                                        >
+                                            {isFetchingLinkedIn ? 'Fetching…' : 'Fetch details'}
+                                        </button>
+                                    </div>
+                                    {linkedInError && (
+                                        <p className="mt-1 text-xs text-red-600">
+                                            {linkedInError}
+                                        </p>
+                                    )}
+                                </div>
                                 <div className="mb-4">
                                     <label className="block text-sm font-medium text-gray-700 mb-2">Title</label>
                                     <input
