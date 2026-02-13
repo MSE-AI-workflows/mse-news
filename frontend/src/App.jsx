@@ -4,6 +4,7 @@ import { FilterProvider } from './context/FilterContext';
 import LoginPage from './pages/LoginPage';
 import AllNewsPage from './pages/AllNewsPage';
 import ProfilePage from './pages/ProfilePage';
+import WriteArticlePage from './pages/WriteArticlePage';
 import Layout from './components/Layout';
 
 function ProtectedRoute({ children }) {
@@ -66,6 +67,14 @@ function AppContent() {
                     <ProfilePage />
                   </LayoutWrapper>
                 </FilterProvider>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/write"
+            element={
+              <ProtectedRoute>
+                <WriteArticlePage />
               </ProtectedRoute>
             }
           />

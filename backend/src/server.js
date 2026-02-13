@@ -9,6 +9,8 @@ import newsRoutes from './routes/news.js';
 import newsletterRoutes from './routes/newsletter.js';
 import publicationsRoutes from './routes/publications.js';
 import linkPreviewRoutes from './routes/linkPreview.js';
+import draftsRoutes from './routes/drafts.js';
+import savedPostsRoutes from './routes/savedPosts.js';
 
 
 dotenv.config();
@@ -53,6 +55,8 @@ app.use('/api/news', newsRoutes);
 app.use('/api/newsletter', newsletterRoutes);
 app.use('/api/publications', publicationsRoutes);
 app.use('/api/link-preview', linkPreviewRoutes);
+app.use('/api/drafts', draftsRoutes);
+app.use('/api/saved-posts', savedPostsRoutes);
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });

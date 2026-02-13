@@ -1,3 +1,12 @@
+import { Bookmark } from 'lucide-react';
+import DOMPurify from 'dompurify';
+
+const ALLOWED_HTML_TAGS = [
+  'p', 'br', 'strong', 'em', 'b', 'i', 'u', 's',
+  'ul', 'ol', 'li', 'blockquote', 'code', 'pre',
+  'a', 'img', 'h1', 'h2', 'h3', 'span', 'div',
+];
+
 function formatDate(dateString) {
   return new Date(dateString).toLocaleDateString('en-US', {
     year: 'numeric',
@@ -22,6 +31,20 @@ function highlightText(text, query) {
   });
 }
 
+function isHtmlContent(str) {
+  if (!str || typeof str !== 'string') return false;
+  return /<[a-z][\s\S]*>/i.test(str);
+}
+
+function renderContent(content, searchQuery) {
+  if (!content) return null;
+  if (isHtmlContent(content)) {
+    const sanitized = DOMPurify.sanitize(content, { ALLOWED_TAGS: ALLOWED_HTML_TAGS, ALLOWED_ATTR: ['href', 'src', 'alt', 'target', 'rel'] });
+    return <div dangerouslySetInnerHTML={{ __html: sanitized }} />;
+  }
+  return searchQuery ? highlightText(content, searchQuery) : content;
+}
+
 export default function NewsCard({
   item,
   expanded,
@@ -29,9 +52,16 @@ export default function NewsCard({
   showActions = false,
   onEdit,
   onDelete,
-  searchQuery = ''
+  searchQuery = '',
+  isSaved = false,
+  onToggleSave,
 }) {
   const isExpanded = expanded === item.id;
+
+  const handleSaveClick = (e) => {
+    e.stopPropagation();
+    onToggleSave?.(item.id);
+  };
 
   const handleClick = () => {
     onToggleExpand?.(isExpanded ? null : item.id);
@@ -70,13 +100,13 @@ export default function NewsCard({
         {item.author_email && (
           <p className="text-xs text-gray-400 mb-2">{item.author_email}</p>
         )}
-        <p
-          className={`text-gray-700 text-sm leading-relaxed flex-1 min-h-0 ${
+        <div
+          className={`text-gray-700 text-sm leading-relaxed flex-1 min-h-0 [&_a]:text-ncsu-red [&_a]:hover:underline [&_p]:mb-2 [&_p:last-child]:mb-0 ${
             isExpanded ? '' : 'line-clamp-4'
           }`}
         >
-          {searchQuery ? highlightText(item.content, searchQuery) : item.content }
-        </p>
+          {renderContent(item.content, searchQuery)}
+        </div>
 
         {Array.isArray(item.hashtags) && item.hashtags.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mt-3">
@@ -103,7 +133,22 @@ export default function NewsCard({
             className="mt-4 pt-4 border-t border-gray-200 flex justify-between items-center gap-4"
             onClick={(e) => e.stopPropagation()}
           >
-            <p className="text-ncsu-red text-sm font-semibold hover:underline">Read more →</p>
+            <div className="flex items-center gap-3">
+              <p className="text-ncsu-red text-sm font-semibold hover:underline">Read more →</p>
+              {onToggleSave && (
+                <button
+                  type="button"
+                  onClick={handleSaveClick}
+                  className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+                  title={isSaved ? 'Unsave' : 'Save'}
+                >
+                  <Bookmark
+                    size={18}
+                    className={isSaved ? 'fill-ncsu-red text-ncsu-red' : 'text-gray-500'}
+                  />
+                </button>
+              )}
+            </div>
             {showActions && (onEdit || onDelete) && (
               <div className="flex gap-2">
                 {onEdit && (
@@ -134,7 +179,22 @@ export default function NewsCard({
             className="mt-4 pt-4 border-t border-gray-200 flex justify-between items-center gap-4"
             onClick={(e) => e.stopPropagation()}
           >
-            <p className="text-xs text-gray-500">Tap to collapse</p>
+            <div className="flex items-center gap-3">
+              <p className="text-xs text-gray-500">Tap to collapse</p>
+              {onToggleSave && (
+                <button
+                  type="button"
+                  onClick={handleSaveClick}
+                  className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+                  title={isSaved ? 'Unsave' : 'Save'}
+                >
+                  <Bookmark
+                    size={18}
+                    className={isSaved ? 'fill-ncsu-red text-ncsu-red' : 'text-gray-500'}
+                  />
+                </button>
+              )}
+            </div>
             {showActions && (onEdit || onDelete) && (
               <div className="flex gap-2">
                 {onEdit && (
