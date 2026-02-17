@@ -39,15 +39,13 @@ export default function ProfileSidebar({ onFilterChange, savedCountFromParent })
 
   const handleNavClick = (type) => {
     if (type === 'my-posts') {
-      navigate('/dashboard/profile');
+      navigate('/dashboard/profile?section=posts');
     } else if (type === 'publications') {
-      navigate('/dashboard/profile#publications');
+      navigate('/dashboard/profile?section=publications');
     } else if (type === 'saved') {
-      if (onFilterChange) {
-        onFilterChange({ type: 'saved' });
-      }
+      navigate('/dashboard/profile?section=saved');
     } else if (type === 'drafts') {
-      navigate('/dashboard/profile?drafts=1');
+      navigate('/dashboard/profile?section=drafts');
     }
   };
 

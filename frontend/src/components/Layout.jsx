@@ -26,19 +26,12 @@ export default function Layout({ children, user, onLogout, onNavigate, activeVie
     
           <div className='hidden md:flex items-center gap-6'>
             <button
-              onClick={() => onNavigate('post')}
-              className={`flex items-center gap-2 hover:text-white/80 transition-colors ${activeView === 'profile' ? 'underline decoration-2 underline-offset-4' : ''}`}
-            >
-                <PlusSquare size={20} />
-                <span className='font-bold text-sm uppercase'>Upload News</span>
-            </button>
-            <button
               onClick={() => onNavigate(activeView === 'feed' ? 'profile' : 'feed')}
               className={`flex items-center gap-2 hover:text-white/80 transition-colors ${activeView === 'profile' ? 'underline decoration-2 underline-offset-4' : ''}`}
             >
               {activeView === 'feed' ? <UserIcon size={20} /> : <Home size={20} />}
               <span className="font-bold text-sm uppercase">
-                {activeView === 'feed' ? 'My News' : 'All News'}
+                {activeView === 'feed' ? 'Profile' : 'All News'}
               </span>
             </button>
             <button
@@ -54,9 +47,6 @@ export default function Layout({ children, user, onLogout, onNavigate, activeVie
             <nav className='md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-6 py-3 flex justify-between items-center z-50'>
             <button onClick={() => onNavigate('feed')} className={activeView === 'feed' ? 'text-[#CC0000]' : 'text-gray-400'}>
           <Home size={24} />
-        </button>
-        <button onClick={() => onNavigate('post')} className={activeView === 'profile' ? 'text-[#CC0000]' : 'text-gray-400'}>
-          <PlusSquare size={24} />
         </button>
         <button
           onClick={() => onNavigate(activeView === 'feed' ? 'profile' : 'feed')}

@@ -15,6 +15,15 @@ function formatDate(dateString) {
   });
 }
 
+function getInitials(name) {
+  if (!name) return 'U';
+  const parts = name.trim().split(' ');
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+  return name[0].toUpperCase();
+}
+
 function highlightText(text, query) {
   if (!query || !text || typeof text !== 'string') return text;
   const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -70,152 +79,165 @@ export default function NewsCard({
   return (
     <article
       onClick={handleClick}
-      className="group flex flex-col min-h-0 bg-white rounded-lg overflow-hidden border border-gray-200 shadow-md cursor-pointer transition-all duration-200 hover:shadow-xl hover:border-ncsu-red/40 hover:scale-[1.02]"
+      className="group flex flex-col min-h-0 bg-white rounded-lg overflow-hidden border border-gray-200 shadow-sm cursor-pointer transition-shadow duration-200 hover:shadow-md hover:border-ncsu-red/40"
     >
-      {/* Red title band */}
-      <div className="bg-ncsu-red text-white px-5 py-4 flex-shrink-0">
-        <h3 className="text-lg font-slab font-bold line-clamp-2">
-          {searchQuery ? highlightText(item.title, searchQuery) : item.title }
-        </h3>
-      </div>
-
-      {/* Images */}
-      {Array.isArray(item.image_urls) && item.image_urls.length > 0 && (
-        <div className="flex gap-2 overflow-x-auto no-scrollbar p-2 border-b border-gray-100">
-          {item.image_urls.map((url, i) => (
-            <img key={i} src={url} alt="" className="h-40 w-auto min-w-[120px] object-cover rounded" onClick={(e) => e.stopPropagation()} />
-          ))}
-        </div>
-      )}
-
-      {/* Body */}
-      <div className="p-5 flex-1 flex flex-col min-h-[180px]">
-        {(item.author_name || item.created_at) && (
-          <p className="text-xs text-gray-500 mb-2">
-            {item.author_name && <span className="font-medium text-ncsu-gray">{item.author_name}</span>}
-            {item.author_name && item.created_at && ' · '}
-            {item.created_at && formatDate(item.created_at)}
-          </p>
-        )}
-        {item.author_email && (
-          <p className="text-xs text-gray-400 mb-2">{item.author_email}</p>
-        )}
-        <div
-          className={`text-gray-700 text-sm leading-relaxed flex-1 min-h-0 [&_a]:text-ncsu-red [&_a]:hover:underline [&_p]:mb-2 [&_p:last-child]:mb-0 ${
-            isExpanded ? '' : 'line-clamp-4'
-          }`}
-        >
-          {renderContent(item.content, searchQuery)}
-        </div>
-
-        {Array.isArray(item.hashtags) && item.hashtags.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mt-3">
-            {item.hashtags.map((tag, i) => (
-              <span key={i} className="px-2 py-0.5 rounded text-xs font-medium bg-ncsu-red/10 text-ncsu-red">
-                #{searchQuery ? highlightText(tag, searchQuery) : tag }
-              </span>
-            ))}
+      {/* Header: avatar + author + timestamp */}
+      <div className="flex items-start justify-between px-4 pt-4 pb-2">
+        <div className="flex items-start gap-3 flex-1">
+          <div className="w-10 h-10 rounded-full bg-ncsu-gray text-white flex items-center justify-center text-sm font-bold flex-shrink-0">
+            {getInitials(item.author_name || item.author_email || 'U')}
           </div>
-        )}
-
-        {Array.isArray(item.external_links) && item.external_links.length > 0 && (
-          <div className="flex flex-wrap gap-2 mt-3">
-            {item.external_links.map((link, i) => (
-              <a key={i} href={link.url} target="_blank" rel="noopener noreferrer" className="text-sm text-ncsu-red hover:underline" onClick={(e) => e.stopPropagation()}>
-                {link.label || link.url}
-              </a>
-            ))}
-          </div>
-        )}
-
-        {!isExpanded && (
-          <div
-            className="mt-4 pt-4 border-t border-gray-200 flex justify-between items-center gap-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center gap-3">
-              <p className="text-ncsu-red text-sm font-semibold hover:underline">Read more →</p>
-              {onToggleSave && (
-                <button
-                  type="button"
-                  onClick={handleSaveClick}
-                  className="p-2 rounded-full hover:bg-gray-100 transition-colors"
-                  title={isSaved ? 'Unsave' : 'Save'}
-                >
-                  <Bookmark
-                    size={18}
-                    className={isSaved ? 'fill-ncsu-red text-ncsu-red' : 'text-gray-500'}
-                  />
-                </button>
-              )}
-            </div>
-            {showActions && (onEdit || onDelete) && (
-              <div className="flex gap-2">
-                {onEdit && (
-                  <button
-                    type="button"
-                    onClick={() => onEdit(item)}
-                    className="bg-ncsu-red text-white px-3 py-2 rounded text-sm font-medium hover:opacity-90 transition-opacity"
-                  >
-                    Edit
-                  </button>
+          <div className="flex-1 min-w-0">
+            {(item.author_name || item.author_email) && (
+              <div className="flex items-center gap-2">
+                {item.author_name && (
+                  <span className="font-semibold text-gray-900 text-sm truncate">
+                    {item.author_name}
+                  </span>
                 )}
-                {onDelete && (
-                  <button
-                    type="button"
-                    onClick={() => onDelete(item.id)}
-                    className="bg-ncsu-gray text-white px-3 py-2 rounded text-sm font-medium hover:opacity-90 transition-opacity"
-                  >
-                    Delete
-                  </button>
+                {item.author_email && (
+                  <span className="text-xs text-gray-500 truncate">
+                    {item.author_email}
+                  </span>
                 )}
               </div>
             )}
+            {item.created_at && (
+              <p className="text-xs text-gray-500 mt-0.5">
+                {formatDate(item.created_at)}
+              </p>
+            )}
           </div>
-        )}
+        </div>
+      </div>
 
-        {isExpanded && (
+      {/* Title (optional, below header) */}
+      {item.title && (
+        <div className="px-4 pb-2">
+          <h3 className="text-base md:text-lg font-bold text-gray-900">
+            {searchQuery ? highlightText(item.title, searchQuery) : item.title}
+          </h3>
+        </div>
+      )}
+
+      {/* Content */}
+      {item.content && (
+        <div className="px-4 pb-3">
           <div
-            className="mt-4 pt-4 border-t border-gray-200 flex justify-between items-center gap-4"
-            onClick={(e) => e.stopPropagation()}
+            className={`text-gray-700 text-sm leading-relaxed [&_a]:text-ncsu-red [&_a]:hover:underline [&_p]:mb-2 [&_p:last-child]:mb-0 ${
+              isExpanded ? '' : 'line-clamp-4'
+            }`}
           >
-            <div className="flex items-center gap-3">
-              <p className="text-xs text-gray-500">Tap to collapse</p>
-              {onToggleSave && (
-                <button
-                  type="button"
-                  onClick={handleSaveClick}
-                  className="p-2 rounded-full hover:bg-gray-100 transition-colors"
-                  title={isSaved ? 'Unsave' : 'Save'}
-                >
-                  <Bookmark
-                    size={18}
-                    className={isSaved ? 'fill-ncsu-red text-ncsu-red' : 'text-gray-500'}
-                  />
-                </button>
-              )}
+            {renderContent(item.content, searchQuery)}
+          </div>
+        </div>
+      )}
+
+      {/* Images */}
+      {Array.isArray(item.image_urls) && item.image_urls.length > 0 && (
+        <div className="px-4 pb-3">
+          {item.image_urls.length === 1 ? (
+            <img
+              src={item.image_urls[0]}
+              alt=""
+              className="w-full rounded-lg object-cover"
+              onClick={(e) => e.stopPropagation()}
+            />
+          ) : (
+            <div className="grid grid-cols-2 gap-2">
+              {item.image_urls.slice(0, 4).map((url, i) => (
+                <img
+                  key={i}
+                  src={url}
+                  alt=""
+                  className="w-full h-40 object-cover rounded-lg"
+                  onClick={(e) => e.stopPropagation()}
+                />
+              ))}
             </div>
-            {showActions && (onEdit || onDelete) && (
-              <div className="flex gap-2">
-                {onEdit && (
-                  <button
-                    type="button"
-                    onClick={() => onEdit(item)}
-                    className="bg-ncsu-red text-white px-3 py-2 rounded text-sm font-medium hover:opacity-90 transition-opacity"
-                  >
-                    Edit
-                  </button>
-                )}
-                {onDelete && (
-                  <button
-                    type="button"
-                    onClick={() => onDelete(item.id)}
-                    className="bg-ncsu-gray text-white px-3 py-2 rounded text-sm font-medium hover:opacity-90 transition-opacity"
-                  >
-                    Delete
-                  </button>
-                )}
-              </div>
+          )}
+        </div>
+      )}
+
+      {/* Hashtags & External Links */}
+      {(Array.isArray(item.hashtags) && item.hashtags.length > 0) ||
+      (Array.isArray(item.external_links) && item.external_links.length > 0) ? (
+        <div className="px-4 pb-3 space-y-2">
+          {Array.isArray(item.hashtags) && item.hashtags.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {item.hashtags.map((tag, i) => (
+                <span
+                  key={i}
+                  className="px-2 py-0.5 rounded text-xs font-medium bg-ncsu-red/10 text-ncsu-red"
+                >
+                  #{searchQuery ? highlightText(tag, searchQuery) : tag}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {Array.isArray(item.external_links) && item.external_links.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {item.external_links.map((link, i) => (
+                <a
+                  key={i}
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-ncsu-red hover:underline"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {link.label || link.url}
+                </a>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : null}
+
+      {/* Bottom action bar */}
+      <div
+        className="px-4 py-3 border-t border-gray-200 flex items-center justify-between"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center gap-2">
+          {onToggleSave && (
+            <button
+              type="button"
+              onClick={handleSaveClick}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-full hover:bg-gray-100 transition-colors"
+              title={isSaved ? 'Unsave' : 'Save'}
+            >
+              <Bookmark
+                size={18}
+                className={isSaved ? 'fill-ncsu-red text-ncsu-red' : 'text-gray-500'}
+              />
+              <span className="text-xs font-medium text-gray-600">
+                {isSaved ? 'Saved' : 'Save'}
+              </span>
+            </button>
+          )}
+        </div>
+
+        {showActions && (onEdit || onDelete) && (
+          <div className="flex gap-2">
+            {onEdit && (
+              <button
+                type="button"
+                onClick={() => onEdit(item)}
+                className="bg-ncsu-red text-white px-3 py-2 rounded text-xs md:text-sm font-medium hover:opacity-90 transition-opacity"
+              >
+                Edit
+              </button>
+            )}
+            {onDelete && (
+              <button
+                type="button"
+                onClick={() => onDelete(item.id)}
+                className="bg-ncsu-gray text-white px-3 py-2 rounded text-xs md:text-sm font-medium hover:opacity-90 transition-opacity"
+              >
+                Delete
+              </button>
             )}
           </div>
         )}

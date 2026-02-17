@@ -1,6 +1,6 @@
 import { useAuth } from '../context/AuthContext';
 import { useState, useEffect, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Search, SlidersHorizontal } from 'lucide-react';
 import api from '../api/client';
 import NewsCard from '../components/NewsCard';
@@ -14,9 +14,13 @@ const ORDER_BY_OPTIONS = [
 ];
 
 export default function ProfilePage() {
+    const { user } = useAuth();
     const { filters, setFilters } = useFilters();
     const [searchParams, setSearchParams] = useSearchParams();
+    const navigate = useNavigate();
     const [news, setNews] = useState([]);
+    const [savedPosts, setSavedPosts] = useState([]);
+    const [drafts, setDrafts] = useState([]);
     const [expandedId, setExpandedId] = useState(null);
     const [showModal, setShowModal] = useState(false);
     const [title, setTitle] = useState('');
@@ -31,30 +35,73 @@ export default function ProfilePage() {
     const [isFetchingLinkedIn, setIsFetchingLinkedIn] = useState(false);
     const [linkedInError, setLinkedInError] = useState(null);
 
+    const section = searchParams.get('section') || 'posts';
+
+    const getInitials = (name) => {
+        if (!name) return 'U';
+        const parts = name.trim().split(' ');
+        if (parts.length >= 2) {
+          return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+        }
+        return name[0].toUpperCase();
+    };
+
     const fetchPublications = async () => {
         try {
           const res = await api.get('/publications/my');
-          setPublications(res.data);
+          // Add author info from logged-in user
+          const pubsWithAuthor = res.data.map(item => ({
+              ...item,
+              author_name: item.author_name || user?.name || null,
+              author_email: item.author_email || user?.email || null,
+          }));
+          setPublications(pubsWithAuthor);
         } catch (err) {
           console.error('Error fetching publications:', err);
         }
       };
 
-
-
     const fetchNews = async () => {
         try {
             const res = await api.get('/news/my');
-            setNews(res.data);
+            // Add author info from logged-in user
+            const newsWithAuthor = res.data.map(item => ({
+                ...item,
+                author_name: item.author_name || user?.name || null,
+                author_email: item.author_email || user?.email || null,
+            }));
+            setNews(newsWithAuthor);
         } catch (error) {
             console.error('Error fetching news:', error);
         }
     };
 
+    const fetchSavedPosts = async () => {
+        try {
+            const res = await api.get('/saved-posts/my');
+            setSavedPosts(res.data);
+        } catch (error) {
+            console.error('Error fetching saved posts:', error);
+        }
+    };
+
+    const fetchDrafts = async () => {
+        try {
+            const res = await api.get('/drafts/my');
+            setDrafts(res.data);
+        } catch (error) {
+            console.error('Error fetching drafts:', error);
+        }
+    };
+
     useEffect(() => {
-        fetchNews();
-        fetchPublications();
-    }, []);
+        if (user) {
+            fetchNews();
+            fetchPublications();
+            fetchSavedPosts();
+            fetchDrafts();
+        }
+    }, [user]);
 
     useEffect(() => {
         if (searchParams.get('add') === '1') {
@@ -165,6 +212,32 @@ export default function ProfilePage() {
         }
     };
 
+    const handleDeleteDraft = async (id) => {
+        if (!window.confirm('Are you sure you want to delete this draft?')) return;
+        try {
+            await api.delete(`/drafts/${id}`);
+            fetchDrafts();
+        } catch (error) {
+            console.error('Error deleting draft:', error);
+        }
+    };
+
+    const handleEditDraft = (draft) => {
+        navigate(`/dashboard/write?edit=${draft.id}`);
+    };
+
+    const handlePublishDraft = async (id) => {
+        if (!window.confirm('Publish this draft as a news post?')) return;
+        try {
+            await api.post(`/drafts/${id}/publish`);
+            fetchDrafts();
+            fetchNews();
+            navigate('/dashboard/profile?section=posts');
+        } catch (error) {
+            console.error('Error publishing draft:', error);
+        }
+    };
+
     const openCreateModal = () => {
         resetForm();
         setShowModal(true);
@@ -186,8 +259,8 @@ export default function ProfilePage() {
     };
     const removeExternalLink = (i) => setExternalLinks(externalLinks.length > 1 ? externalLinks.filter((_, idx) => idx !== i) : [{ label: '', url: '' }]);
 
-    const filteredNews = useMemo(() => {
-        let result = [...news];
+    const applyFilters = (items) => {
+        let result = [...items];
 
         const q = (filters.search || '').toLowerCase().trim();
         if (q) {
@@ -203,7 +276,7 @@ export default function ProfilePage() {
         const dateRange = filters.dateRange || 'all';
         if (dateRange !== 'all') {
             result = result.filter((item) => {
-                const d = new Date(item.created_at);
+                const d = new Date(item.created_at || item.updated_at);
                 if (dateRange === 'today') return d.toDateString() === now.toDateString();
                 if (dateRange === 'week') {
                     const weekAgo = new Date(now);
@@ -221,8 +294,10 @@ export default function ProfilePage() {
 
         const orderBy = filters.orderBy || 'newest';
         result.sort((a, b) => {
-            if (orderBy === 'newest') return new Date(b.created_at) - new Date(a.created_at);
-            if (orderBy === 'oldest') return new Date(a.created_at) - new Date(b.created_at);
+            const dateA = new Date(a.created_at || a.updated_at || 0);
+            const dateB = new Date(b.created_at || b.updated_at || 0);
+            if (orderBy === 'newest') return dateB - dateA;
+            if (orderBy === 'oldest') return dateA - dateB;
             const ta = (a.title || '').toLowerCase();
             const tb = (b.title || '').toLowerCase();
             if (orderBy === 'title-az') return ta.localeCompare(tb);
@@ -231,7 +306,12 @@ export default function ProfilePage() {
         });
 
         return result;
-    }, [news, filters.search, filters.dateRange, filters.orderBy]);
+    };
+
+    const filteredNews = useMemo(() => applyFilters(news), [news, filters.search, filters.dateRange, filters.orderBy]);
+    const filteredSavedPosts = useMemo(() => applyFilters(savedPosts), [savedPosts, filters.search, filters.dateRange, filters.orderBy]);
+    const filteredDrafts = useMemo(() => applyFilters(drafts), [drafts, filters.search, filters.dateRange, filters.orderBy]);
+    const filteredPublications = useMemo(() => applyFilters(publications), [publications, filters.search, filters.dateRange, filters.orderBy]);
 
     return (
         <div className="min-h-screen bg-[#f2f2f2] font-sans flex flex-col lg:flex-row">
@@ -292,53 +372,197 @@ export default function ProfilePage() {
 
             {/* Main content */}
             <div className="flex-1 min-w-0 px-4 py-8">
-
-                <div className="max-w-3xl mx-auto space-y-8">
-                    {/* My News feed */}
-                    <div>
-                        <h2 className="text-xl font-slab font-bold text-ncsu-gray mb-4 uppercase tracking-tight">My News</h2>
-                        <div className="grid grid-cols-1 gap-4 w-full">
-                            {filteredNews.map((item) => (
-                                <NewsCard
-                                    key={item.id}
-                                    item={item}
-                                    expanded={expandedId}
-                                    onToggleExpand={setExpandedId}
-                                    showActions
-                                    onEdit={handleEdit}
-                                    onDelete={handleDelete}
-                                    searchQuery={filters.search?.trim() || ''}
-                                />
+                <div className="max-w-3xl mx-auto">
+                    {/* Tab Navigation */}
+                    <div className="bg-white border-b border-gray-200 mb-6 rounded-t-lg overflow-hidden">
+                        <div className="flex gap-1 overflow-x-auto">
+                            {[
+                                { id: 'posts', label: 'My Posts', count: news.length },
+                                { id: 'publications', label: 'Publications', count: publications.length },
+                                { id: 'saved', label: 'Saved Posts', count: savedPosts.length },
+                                { id: 'drafts', label: 'Drafts', count: drafts.length },
+                            ].map((tab) => (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setSearchParams({ section: tab.id })}
+                                    className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                                        section === tab.id
+                                            ? 'border-ncsu-red text-ncsu-red'
+                                            : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'
+                                    }`}
+                                >
+                                    {tab.label}
+                                    {tab.count > 0 && (
+                                        <span className={`ml-2 px-2 py-0.5 rounded-full text-xs ${
+                                            section === tab.id ? 'bg-ncsu-red/20 text-ncsu-red' : 'bg-gray-100 text-gray-600'
+                                        }`}>
+                                            {tab.count}
+                                        </span>
+                                    )}
+                                </button>
                             ))}
                         </div>
-                        {news.length === 0 && (
-                            <div className="text-center py-16">
-                                <p className="text-ncsu-gray/80 text-lg">No news items yet. Click "Upload News" at the top to get started!</p>
-                            </div>
-                        )}
                     </div>
 
-                    {/* My Publications feed (read-only, pulled from publications DB) */}
-                    <div>
-                        <h2 className="text-xl font-slab font-bold text-ncsu-gray mb-4 uppercase tracking-tight">My Publications</h2>
-                        {publications.length > 0 ? (
-                            <div className="grid grid-cols-1 gap-4 w-full">
-                                {publications.map((item) => (
-                                    <NewsCard
-                                        key={item.id}
-                                        item={item}
-                                        expanded={expandedId}
-                                        onToggleExpand={setExpandedId}
-                                        showActions={false}
-                                        searchQuery={filters.search?.trim() || ''}
-                                    />
-                                ))}
+                    <div className="space-y-8">
+                    {/* My Posts */}
+                    {section === 'posts' && (
+                        <div className="space-y-4">
+                            {/* Start a post card (same pattern as AllNewsPage) */}
+                            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                                <div className="flex items-center gap-3 mb-3">
+                                    <div className="w-10 h-10 rounded-full bg-ncsu-gray text-white flex items-center justify-center text-sm font-bold">
+                                        {user ? getInitials(user.name) : 'U'}
+                                    </div>
+                                    <button
+                                        onClick={() => navigate('/dashboard/write')}
+                                        className="flex-1 text-left px-4 py-2.5 bg-gray-50 hover:bg-gray-100 border border-gray-300 rounded-full text-sm text-gray-500 transition-colors"
+                                    >
+                                        Start a post...
+                                    </button>
+                                </div>
                             </div>
-                        ) : (
-                            <p className="text-sm text-gray-500">
-                                No publications found for your profile yet.
-                            </p>
-                        )}
+
+                            {filteredNews.length > 0 ? (
+                                <div className="grid grid-cols-1 gap-4 w-full">
+                                    {filteredNews.map((item) => (
+                                        <NewsCard
+                                            key={item.id}
+                                            item={item}
+                                            expanded={expandedId}
+                                            onToggleExpand={setExpandedId}
+                                            showActions
+                                            onEdit={handleEdit}
+                                            onDelete={handleDelete}
+                                            searchQuery={filters.search?.trim() || ''}
+                                        />
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center py-16 bg-white rounded-lg border border-gray-200">
+                                    <p className="text-ncsu-gray/80 text-lg">
+                                        {news.length === 0
+                                            ? 'No posts yet. Click "Start a post" above to get started!'
+                                            : 'No posts match your filters.'}
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* My Publications */}
+                    {section === 'publications' && (
+                        <div>
+                            {filteredPublications.length > 0 ? (
+                                <div className="grid grid-cols-1 gap-4 w-full">
+                                    {filteredPublications.map((item) => (
+                                        <NewsCard
+                                            key={item.id}
+                                            item={item}
+                                            expanded={expandedId}
+                                            onToggleExpand={setExpandedId}
+                                            showActions={false}
+                                            searchQuery={filters.search?.trim() || ''}
+                                        />
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center py-16 bg-white rounded-lg border border-gray-200">
+                                    <p className="text-ncsu-gray/80 text-lg">
+                                        {publications.length === 0
+                                            ? 'No publications found for your profile yet.'
+                                            : 'No publications match your filters.'}
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Saved Posts */}
+                    {section === 'saved' && (
+                        <div>
+                            {filteredSavedPosts.length > 0 ? (
+                                <div className="grid grid-cols-1 gap-4 w-full">
+                                    {filteredSavedPosts.map((item) => (
+                                        <NewsCard
+                                            key={item.id}
+                                            item={item}
+                                            expanded={expandedId}
+                                            onToggleExpand={setExpandedId}
+                                            showActions={false}
+                                            searchQuery={filters.search?.trim() || ''}
+                                        />
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center py-16 bg-white rounded-lg border border-gray-200">
+                                    <p className="text-ncsu-gray/80 text-lg">
+                                        {savedPosts.length === 0
+                                            ? 'No saved posts yet. Save posts from All News to see them here.'
+                                            : 'No saved posts match your filters.'}
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Drafts */}
+                    {section === 'drafts' && (
+                        <div>
+                            {filteredDrafts.length > 0 ? (
+                                <div className="grid grid-cols-1 gap-4 w-full">
+                                    {filteredDrafts.map((item) => (
+                                        <div key={item.id} className="bg-white rounded-lg border border-gray-200 shadow-md p-5">
+                                            <div className="flex items-start justify-between mb-3">
+                                                <div className="flex-1">
+                                                    <h3 className="text-lg font-slab font-bold text-ncsu-gray mb-2">
+                                                        {item.title || '(Untitled Draft)'}
+                                                    </h3>
+                                                    <p className="text-xs text-gray-500 mb-2">
+                                                        Last updated: {new Date(item.updated_at).toLocaleDateString()}
+                                                    </p>
+                                                    {item.content && (
+                                                        <div className="text-sm text-gray-700 line-clamp-3 mb-3">
+                                                            {item.content.replace(/<[^>]*>/g, '').substring(0, 200)}
+                                                            {item.content.length > 200 ? '...' : ''}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => handleEditDraft(item)}
+                                                    className="px-4 py-2 bg-ncsu-red text-white rounded text-sm font-medium hover:opacity-90"
+                                                >
+                                                    Edit
+                                                </button>
+                                                <button
+                                                    onClick={() => handlePublishDraft(item.id)}
+                                                    className="px-4 py-2 bg-green-600 text-white rounded text-sm font-medium hover:opacity-90"
+                                                >
+                                                    Publish
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeleteDraft(item.id)}
+                                                    className="px-4 py-2 bg-ncsu-gray text-white rounded text-sm font-medium hover:opacity-90"
+                                                >
+                                                    Delete
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center py-16 bg-white rounded-lg border border-gray-200">
+                                    <p className="text-ncsu-gray/80 text-lg">
+                                        {drafts.length === 0
+                                            ? 'No drafts yet. Start writing an article to save drafts.'
+                                            : 'No drafts match your filters.'}
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    )}
                     </div>
                 </div>
             </div>
