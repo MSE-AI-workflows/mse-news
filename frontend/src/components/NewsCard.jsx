@@ -1,3 +1,4 @@
+import { useState, useEffect, useRef } from 'react';
 import { Bookmark } from 'lucide-react';
 import DOMPurify from 'dompurify';
 
@@ -61,25 +62,53 @@ export default function NewsCard({
   showActions = false,
   onEdit,
   onDelete,
+  onPublishToNews,
   searchQuery = '',
   isSaved = false,
   onToggleSave,
 }) {
   const isExpanded = expanded === item.id;
+  const contentRef = useRef(null);
+  const [isTruncated, setIsTruncated] = useState(false);
+
+  useEffect(() => {
+    if (!item.content || isExpanded) {
+      setIsTruncated(false);
+      return;
+    }
+
+    // Check if content is actually truncated
+    const checkTruncation = () => {
+      if (contentRef.current) {
+        const element = contentRef.current;
+        // If scrollHeight is greater than clientHeight, content is truncated
+        setIsTruncated(element.scrollHeight > element.clientHeight);
+      }
+    };
+
+    // Small delay to ensure DOM is rendered
+    const timeoutId = setTimeout(checkTruncation, 0);
+    return () => clearTimeout(timeoutId);
+  }, [item.content, isExpanded]);
 
   const handleSaveClick = (e) => {
     e.stopPropagation();
     onToggleSave?.(item.id);
   };
 
-  const handleClick = () => {
-    onToggleExpand?.(isExpanded ? null : item.id);
+  const handleExpand = (e) => {
+    e?.stopPropagation?.();
+    if (!isExpanded) onToggleExpand?.(item.id);
+  };
+
+  const handlePublishToNews = (e) => {
+    e?.stopPropagation?.();
+    onPublishToNews?.(item);
   };
 
   return (
     <article
-      onClick={handleClick}
-      className="group flex flex-col min-h-0 bg-white rounded-lg overflow-hidden border border-gray-200 shadow-sm cursor-pointer transition-shadow duration-200 hover:shadow-md hover:border-ncsu-red/40"
+      className="group flex flex-col min-h-0 bg-white rounded-lg overflow-hidden border border-gray-200 shadow-sm transition-shadow duration-200 hover:shadow-md hover:border-ncsu-red/40"
     >
       {/* Header: avatar + author + timestamp */}
       <div className="flex items-start justify-between px-4 pt-4 pb-2">
@@ -124,12 +153,22 @@ export default function NewsCard({
       {item.content && (
         <div className="px-4 pb-3">
           <div
-            className={`text-gray-700 text-sm leading-relaxed [&_a]:text-ncsu-red [&_a]:hover:underline [&_p]:mb-2 [&_p:last-child]:mb-0 ${
-              isExpanded ? '' : 'line-clamp-4'
+            ref={contentRef}
+            className={`text-gray-700 text-sm leading-relaxed whitespace-pre-line [&_a]:text-ncsu-red [&_a]:hover:underline [&_p]:mb-2 [&_p:last-child]:mb-0 ${
+              isExpanded ? '' : 'overflow-hidden max-h-[6rem]'
             }`}
           >
             {renderContent(item.content, searchQuery)}
           </div>
+          {!isExpanded && isTruncated && (
+            <button
+              type="button"
+              onClick={handleExpand}
+              className="text-sm text-ncsu-red hover:underline cursor-pointer font-medium mt-0.5"
+            >
+              ...more
+            </button>
+          )}
         </div>
       )}
 
@@ -219,28 +258,37 @@ export default function NewsCard({
           )}
         </div>
 
-        {showActions && (onEdit || onDelete) && (
-          <div className="flex gap-2">
-            {onEdit && (
-              <button
-                type="button"
-                onClick={() => onEdit(item)}
-                className="bg-ncsu-red text-white px-3 py-2 rounded text-xs md:text-sm font-medium hover:opacity-90 transition-opacity"
-              >
-                Edit
-              </button>
-            )}
-            {onDelete && (
-              <button
-                type="button"
-                onClick={() => onDelete(item.id)}
-                className="bg-ncsu-gray text-white px-3 py-2 rounded text-xs md:text-sm font-medium hover:opacity-90 transition-opacity"
-              >
-                Delete
-              </button>
-            )}
-          </div>
-        )}
+        <div className="flex gap-2">
+          {onPublishToNews && item?.doi && (
+            <button
+              type="button"
+              onClick={handlePublishToNews}
+              className="bg-ncsu-red text-white px-3 py-2 rounded text-xs md:text-sm font-medium hover:opacity-90 transition-opacity"
+              title="Create a news post from this publication"
+            >
+              Publish to MSE News Portal
+            </button>
+          )}
+
+          {showActions && onEdit && (
+            <button
+              type="button"
+              onClick={() => onEdit(item)}
+              className="bg-ncsu-red text-white px-3 py-2 rounded text-xs md:text-sm font-medium hover:opacity-90 transition-opacity"
+            >
+              Edit
+            </button>
+          )}
+          {showActions && onDelete && (
+            <button
+              type="button"
+              onClick={() => onDelete(item.id)}
+              className="bg-ncsu-gray text-white px-3 py-2 rounded text-xs md:text-sm font-medium hover:opacity-90 transition-opacity"
+            >
+              Delete
+            </button>
+          )}
+        </div>
       </div>
     </article>
   );

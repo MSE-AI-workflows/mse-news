@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { ArrowLeft, Image as ImageIcon } from 'lucide-react';
 import api from '../api/client';
@@ -7,9 +7,14 @@ import api from '../api/client';
 export default function WriteArticlePage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const draftId = searchParams.get('draft');
   const editDraftId = searchParams.get('edit');
+  const doi = searchParams.get('doi');
+  const publicationTitle = location.state?.publicationTitle;
+  const journal = location.state?.journal;
+  const authors = location.state?.authors;
 
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -28,6 +33,40 @@ export default function WriteArticlePage() {
       fetchDraft(editDraftId);
     }
   }, [editDraftId]);
+
+  useEffect(() => {
+    if (!doi) return;
+
+    const titleFromDb = publicationTitle || 'Untitled';
+    setTitle(`My Paper: ${titleFromDb}`.trim());
+    setExternalLinks([{ label: 'View publication (DOI)', url: `https://doi.org/${doi}` }]);
+
+    const journalLabel = journal || '';
+    const authorsLabel = Array.isArray(authors) && authors.length > 0 ? authors.join(', ') : '';
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await api.get(`/doi-fetch?doi=${encodeURIComponent(doi)}`);
+        if (cancelled) return;
+        const abstract = res.data?.abstract ?? '';
+        const parts = [];
+        if (journalLabel) parts.push(`Journal: ${journalLabel}`);
+        if (authorsLabel) parts.push(`Authors: ${authorsLabel}`);
+        if (abstract) parts.push(`\nAbstract:\n${abstract}`);
+        setContent(parts.join('\n\n'));
+      } catch {
+        const parts = [];
+        if (journalLabel) parts.push(`Journal: ${journalLabel}`);
+        if (authorsLabel) parts.push(`Authors: ${authorsLabel}`);
+        setContent(parts.join('\n\n'));
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [doi, publicationTitle, journal, authors]);
 
   const fetchDraft = async (id) => {
     try {
@@ -260,8 +299,8 @@ export default function WriteArticlePage() {
       </header>
 
       {/* Main Content - Two Column Layout */}
-      <main className="w-full px-4 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-[30%_70%] gap-6">
+      <main className="w-full px-6 md:px-10 lg:px-12 py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-[30%_70%] gap-8 lg:gap-10">
           {/* Left Column (30%) - Metadata Fields */}
           <aside className="space-y-6">
             {/* Images */}

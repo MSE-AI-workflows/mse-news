@@ -226,6 +226,17 @@ export default function ProfilePage() {
         navigate(`/dashboard/write?edit=${draft.id}`);
     };
 
+    const handlePublishPublicationToNews = (pubItem) => {
+        if (!pubItem?.doi) return;
+        navigate(`/dashboard/write?doi=${encodeURIComponent(pubItem.doi)}`, {
+            state: {
+                publicationTitle: pubItem.title || 'Untitled',
+                journal: pubItem.journal || '',
+                authors: Array.isArray(pubItem.authors) ? pubItem.authors : [],
+            },
+        });
+    };
+
     const handlePublishDraft = async (id) => {
         if (!window.confirm('Publish this draft as a news post?')) return;
         try {
@@ -462,6 +473,7 @@ export default function ProfilePage() {
                                             expanded={expandedId}
                                             onToggleExpand={setExpandedId}
                                             showActions={false}
+                                            onPublishToNews={handlePublishPublicationToNews}
                                             searchQuery={filters.search?.trim() || ''}
                                         />
                                     ))}

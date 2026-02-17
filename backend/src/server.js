@@ -14,6 +14,7 @@ import linkPreviewRoutes from './routes/linkPreview.js';
 import draftsRoutes from './routes/drafts.js';
 import savedPostsRoutes from './routes/savedPosts.js';
 import uploadRoutes from './routes/uploads.js';
+import doiFetchRoutes from './routes/doiFetch.js';
 
 
 dotenv.config();
@@ -67,6 +68,7 @@ app.use('/api/link-preview', linkPreviewRoutes);
 app.use('/api/drafts', draftsRoutes);
 app.use('/api/saved-posts', savedPostsRoutes);
 app.use('/api/uploads', uploadRoutes);
+app.use('/api/doi-fetch', doiFetchRoutes);
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });

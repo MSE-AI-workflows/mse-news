@@ -94,7 +94,10 @@ export async function getMyPublications(req, res) {
 
       return {
         id: `pub-${p.doi || Math.random().toString(36).slice(2)}`, // needs to be unique vs news ids
+        doi: p.doi || null,
         title: p.title,
+        journal: p.journal || null,
+        authors: p.authors || [],
         // Show journal + year + authors in the body
         content: `${p.journal} (${yearLabel})\nAuthors: ${authorsLabel}`,
         // Approximate date for sorting; you can adjust if you have a full date
