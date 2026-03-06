@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import api from '../api/client';
 
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 const AuthContext = createContext();
 
 export function AuthProvider({ children }){
@@ -24,7 +25,8 @@ export function AuthProvider({ children }){
 
 };
 const login = () => {
-    window.location.href = 'http://localhost:4000/api/auth/google';
+    const backendOrigin = API_BASE.replace(/\/+$/, '').replace(/\/api$/, '');
+    window.location.href = `${backendOrigin}/api/auth/google`;
 };
 
     const logout = async() => {
