@@ -50,7 +50,7 @@ export async function getMyPublications(req, res) {
           publication_date DESC,                                  -- newest date first
           publication_year DESC,                                  -- fallback if needed
           title ASC
-        LIMIT 5
+        LIMIT 10
         `,
         [unityId]
       );

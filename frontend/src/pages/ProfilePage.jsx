@@ -463,7 +463,10 @@ export default function ProfilePage() {
 
                     {/* My Publications */}
                     {section === 'publications' && (
-                        <div>
+                        <div className="space-y-3">
+                            <p className="text-xs text-gray-500">
+                                Showing your 10 most recent publications from the MSE publications database.
+                            </p>
                             {filteredPublications.length > 0 ? (
                                 <div className="grid grid-cols-1 gap-4 w-full">
                                     {filteredPublications.map((item) => (
@@ -618,11 +621,11 @@ export default function ProfilePage() {
                                 </div>
                                 <div className="mb-4">
                                     <label className="block text-sm font-medium text-gray-700 mb-2">Title</label>
-                                    <input
-                                        type="text"
+                                    <textarea
+                                        rows={2}
                                         value={title}
                                         onChange={(e) => setTitle(e.target.value)}
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-ncsu-red font-sans"
+                                        className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-ncsu-red font-sans resize-none overflow-hidden leading-tight"
                                         required
                                     />
                                 </div>

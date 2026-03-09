@@ -5,17 +5,30 @@ export default function Layout({ children, user, onLogout, onNavigate, activeVie
     return (
         <div className="min-h-screen flex flex-col bg-[#f2f2f2] font-sans">
             <div className='bg-black text-white text-[10px] px-4 py-1 flex justify-end gap-4 uppercase font-bold tracking-wider'>
-                <a
-                  href="https://www.ncsu.edu/"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="hover:underline"
-                >
-                  ncsu.edu
-                </a>
-                <span>Directory</span>
-                <span>Libraries</span>
-                <span>MyPack Portal</span>
+              <a
+                href="https://www.ncsu.edu/"
+                target="_blank"
+                rel="noreferrer"
+                className="hover:underline"
+              >
+                ncsu.edu
+              </a>
+              <a
+                href="https://www.lib.ncsu.edu/"
+                target="_blank"
+                rel="noreferrer"
+                className="hover:underline"
+              >
+                Libraries
+              </a>
+              <a
+                href="https://mypack.ncsu.edu"
+                target="_blank"
+                rel="noreferrer"
+                className="hover:underline"
+              >
+                MyPack Portal
+              </a>
             </div>
 
             {/* Main Header */}
@@ -88,8 +101,26 @@ export default function Layout({ children, user, onLogout, onNavigate, activeVie
         MSE Quick Links
       </h3>
       <ul className="text-sm space-y-2 text-gray-300">
-        <li className="hover:text-white cursor-pointer">Graduate Programs</li>
-        <li className="hover:text-white cursor-pointer">Undergraduate Programs</li>
+        <li>
+          <a
+            href="https://mse.ncsu.edu/graduate/"
+            target="_blank"
+            rel="noreferrer"
+            className="hover:text-white"
+          >
+            Graduate Programs
+          </a>
+        </li>
+        <li>
+          <a
+            href="https://mse.ncsu.edu/undergraduate/majors/"
+            target="_blank"
+            rel="noreferrer"
+            className="hover:text-white"
+          >
+            Undergraduate Programs
+          </a>
+        </li>
         <li className="hover:text-white cursor-pointer">Research Lab Access</li>
         <li className="hover:text-white cursor-pointer">Safety Protocols</li>
       </ul>

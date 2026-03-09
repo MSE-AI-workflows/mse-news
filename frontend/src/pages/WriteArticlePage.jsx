@@ -97,6 +97,9 @@ export default function WriteArticlePage() {
 
       const data = res.data;
 
+      // Always prefill a generic LinkedIn title, independent of scraped title
+      setTitle('My LinkedIn Post:');
+
       if (data.content) {
         setContent(data.content);
       }
@@ -453,12 +456,12 @@ export default function WriteArticlePage() {
           <div className="space-y-6">
             {/* Title Input */}
             <div>
-              <input
-                type="text"
+              <textarea
+                rows={2}
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Title"
-                className="w-full text-3xl md:text-4xl font-slab font-bold text-gray-900 placeholder-gray-400 border-none focus:outline-none"
+                className="w-full text-3xl md:text-4xl font-slab font-bold text-gray-900 placeholder-gray-400 border-none focus:outline-none resize-none overflow-hidden leading-tight"
               />
             </div>
 
