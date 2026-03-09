@@ -15,6 +15,7 @@ export default function WriteArticlePage() {
   const publicationTitle = location.state?.publicationTitle;
   const journal = location.state?.journal;
   const authors = location.state?.authors;
+  const editPost = location.state?.editPost;
 
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -27,6 +28,18 @@ export default function WriteArticlePage() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showManageMenu, setShowManageMenu] = useState(false);
+  const [editingPostId, setEditingPostId] = useState(null);
+
+  useEffect(() => {
+    if (editPost) {
+      setTitle(editPost.title || '');
+      setContent(editPost.content || '');
+      setHashtags(Array.isArray(editPost.hashtags) ? editPost.hashtags.join(', ') : '');
+      setImageUrls(Array.isArray(editPost.image_urls) && editPost.image_urls.length > 0 ? editPost.image_urls : []);
+      setExternalLinks(Array.isArray(editPost.external_links) && editPost.external_links.length > 0 ? editPost.external_links : [{ label: '', url: '' }]);
+      setEditingPostId(editPost.id);
+    }
+  }, [editPost]);
 
   useEffect(() => {
     if (editDraftId) {
@@ -168,16 +181,19 @@ export default function WriteArticlePage() {
         .filter((l) => l.label.trim() && l.url.trim())
         .map((l) => ({ label: l.label.trim(), url: l.url.trim() }));
 
-      if (editDraftId) {
+      const payload = {
+        title,
+        content,
+        hashtags: hashtagsArray,
+        image_urls: imageUrlsArray,
+        external_links: externalLinksArray,
+      };
+
+      if (editingPostId) {
+        await api.put(`/news/my/${editingPostId}`, payload);
+      } else if (editDraftId) {
         await api.post(`/drafts/${editDraftId}/publish`);
       } else {
-        const payload = {
-          title,
-          content,
-          hashtags: hashtagsArray,
-          image_urls: imageUrlsArray,
-          external_links: externalLinksArray,
-        };
         await api.post('/news/my', payload);
       }
 
@@ -294,7 +310,7 @@ export default function WriteArticlePage() {
               disabled={loading || !title.trim() || !hasContent}
               className="px-6 py-2 bg-ncsu-red text-white rounded-full text-sm font-medium hover:opacity-90 disabled:opacity-50 flex items-center gap-2"
             >
-              {loading ? 'Publishing...' : 'Publish'}
+              {loading ? (editingPostId ? 'Updating...' : 'Publishing...') : (editingPostId ? 'Update' : 'Publish')}
               <span>→</span>
             </button>
           </div>

@@ -66,6 +66,7 @@ export default function NewsCard({
   searchQuery = '',
   isSaved = false,
   onToggleSave,
+  onPreview,
 }) {
   const isExpanded = expanded === item.id;
   const contentRef = useRef(null);
@@ -108,7 +109,8 @@ export default function NewsCard({
 
   return (
     <article
-      className="group flex flex-col min-h-0 bg-white rounded-lg overflow-hidden border border-gray-200 shadow-sm transition-shadow duration-200 hover:shadow-md hover:border-ncsu-red/40"
+      className={`group flex flex-col min-h-0 bg-white rounded-lg overflow-hidden border border-gray-200 shadow-sm transition-shadow duration-200 hover:shadow-md hover:border-ncsu-red/40${onPreview ? ' cursor-pointer' : ''}`}
+      onClick={onPreview}
     >
       {/* Header: avatar + author + timestamp */}
       <div className="flex items-start justify-between px-4 pt-4 pb-2">
@@ -174,27 +176,68 @@ export default function NewsCard({
 
       {/* Images */}
       {Array.isArray(item.image_urls) && item.image_urls.length > 0 && (
-        <div className="px-4 pb-3">
+        <div className="pb-1">
           {item.image_urls.length === 1 ? (
             <img
               src={item.image_urls[0]}
               alt=""
-              className="w-full rounded-lg object-cover"
-              onClick={(e) => e.stopPropagation()}
+              className="w-full object-contain"
             />
-          ) : (
-            <div className="grid grid-cols-2 gap-2">
-              {item.image_urls.slice(0, 4).map((url, i) => (
+          ) : item.image_urls.length === 2 ? (
+            <div className="grid grid-cols-2 gap-0.5">
+              {item.image_urls.map((url, i) => (
                 <img
                   key={i}
                   src={url}
                   alt=""
-                  className="w-full h-40 object-cover rounded-lg"
-                  onClick={(e) => e.stopPropagation()}
+                  className="w-full object-cover aspect-square"
                 />
               ))}
             </div>
-          )}
+          ) : item.image_urls.length === 3 ? (
+            <div className="grid grid-cols-2 gap-0.5">
+              <img
+                src={item.image_urls[0]}
+                alt=""
+                className="w-full object-cover aspect-square row-span-2"
+              />
+              {item.image_urls.slice(1, 3).map((url, i) => (
+                <img
+                  key={i}
+                  src={url}
+                  alt=""
+                  className="w-full object-cover aspect-square"
+                />
+              ))}
+            </div>
+          ) : (() => {
+            const extra = item.image_urls.length - 4;
+            return (
+              <div className="flex flex-col gap-0.5">
+                <img
+                  src={item.image_urls[0]}
+                  alt=""
+                  className="w-full object-contain"
+                />
+                <div className="grid grid-cols-3 gap-0.5">
+                  {item.image_urls.slice(1, 4).map((url, i) => (
+                    <div key={i} className="relative">
+                      <img
+                        src={url}
+                        alt=""
+                        className="w-full object-cover aspect-video"
+                      />
+                      {i === 2 && extra > 0 && (
+                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                          <span className="text-white text-2xl font-bold">+{extra}</span>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
         </div>
       )}
 

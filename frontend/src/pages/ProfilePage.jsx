@@ -22,18 +22,7 @@ export default function ProfilePage() {
     const [savedPosts, setSavedPosts] = useState([]);
     const [drafts, setDrafts] = useState([]);
     const [expandedId, setExpandedId] = useState(null);
-    const [showModal, setShowModal] = useState(false);
-    const [title, setTitle] = useState('');
-    const [content, setContent] = useState('');
-    const [hashtags, setHashtags] = useState('');
-    const [imageUrls, setImageUrls] = useState(['']);
-    const [externalLinks, setExternalLinks] = useState([{ label: '', url: '' }]);
-    const [editingId, setEditingId] = useState(null);
-    const [loading, setLoading] = useState(false);
     const [publications, setPublications] = useState([]);
-    const [linkedInUrl, setLinkedInUrl] = useState('');
-    const [isFetchingLinkedIn, setIsFetchingLinkedIn] = useState(false);
-    const [linkedInError, setLinkedInError] = useState(null);
 
     const section = searchParams.get('section') || 'posts';
 
@@ -105,101 +94,13 @@ export default function ProfilePage() {
 
     useEffect(() => {
         if (searchParams.get('add') === '1') {
-            openCreateModal();
+            navigate('/dashboard/write');
             setSearchParams({}, { replace: true });
         }
     }, [searchParams]);
 
-    const resetForm = () => {
-        setTitle('');
-        setContent('');
-        setHashtags('');
-        setImageUrls(['']);
-        setExternalLinks([{ label: '', url: '' }]);
-        setEditingId(null);
-        // Also clear LinkedIn import state after save/close
-        setLinkedInUrl('');
-        setLinkedInError(null);
-        setIsFetchingLinkedIn(false);
-    };
-
-    const handleImportFromLinkedIn = async () => {
-        if (!linkedInUrl.trim()) return;
-      
-        try {
-          setIsFetchingLinkedIn(true);
-          setLinkedInError('');
-      
-          const res = await api.post('/link-preview/fetch-linkedin-post', {
-            url: linkedInUrl.trim(),
-          });
-      
-          const data = res.data;
-      
-          // We intentionally DO NOT set the title from LinkedIn,
-          // so the user can provide a custom news title.
-      
-          // 1) Content
-          if (data.content) {
-            setContent(data.content);
-          }
-      
-          // 2) Hashtags (array -> comma-separated string for input)
-          if (Array.isArray(data.hashtags) && data.hashtags.length > 0) {
-            setHashtags(data.hashtags.join(', '));
-          }
-      
-          // 3) Image URLs
-          if (Array.isArray(data.image_urls) && data.image_urls.length > 0) {
-            setImageUrls(data.image_urls);
-          }
-      
-          // 4) External links
-          if (Array.isArray(data.external_links) && data.external_links.length > 0) {
-            setExternalLinks(data.external_links);
-          }
-        } catch (err) {
-          console.error('Error importing from LinkedIn:', err);
-          setLinkedInError('Could not fetch details from that LinkedIn URL.');
-        } finally {
-          setIsFetchingLinkedIn(false);
-        }
-      };
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setLoading(true);
-        try {
-            const hashtagsArray = hashtags.split(',').map((t) => t.trim()).filter(Boolean);
-            const imageUrlsArray = imageUrls.filter((u) => u.trim().length > 0);
-            const externalLinksArray = externalLinks
-                .filter((l) => l.label.trim() && l.url.trim())
-                .map((l) => ({ label: l.label.trim(), url: l.url.trim() }));
-
-            const payload = { title, content, hashtags: hashtagsArray, image_urls: imageUrlsArray, external_links: externalLinksArray };
-            if (editingId) {
-                await api.put(`/news/my/${editingId}`, payload);
-            } else {
-                await api.post('/news/my', payload);
-            }
-            resetForm();
-            setShowModal(false);
-            fetchNews();
-        } catch (error) {
-            console.error('Error saving news:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
     const handleEdit = (item) => {
-        setTitle(item.title || '');
-        setContent(item.content || '');
-        setHashtags(Array.isArray(item.hashtags) ? item.hashtags.join(', ') : '');
-        setImageUrls(Array.isArray(item.image_urls) && item.image_urls.length > 0 ? item.image_urls : ['']);
-        setExternalLinks(Array.isArray(item.external_links) && item.external_links.length > 0 ? item.external_links : [{ label: '', url: '' }]);
-        setEditingId(item.id);
-        setShowModal(true);
+        navigate('/dashboard/write', { state: { editPost: item } });
     };
 
     const handleDelete = async (id) => {
@@ -249,26 +150,6 @@ export default function ProfilePage() {
         }
     };
 
-    const openCreateModal = () => {
-        resetForm();
-        setShowModal(true);
-    };
-
-    const addImageUrl = () => setImageUrls([...imageUrls, '']);
-    const updateImageUrl = (i, v) => {
-        const next = [...imageUrls];
-        next[i] = v;
-        setImageUrls(next);
-    };
-    const removeImageUrl = (i) => setImageUrls(imageUrls.length > 1 ? imageUrls.filter((_, idx) => idx !== i) : ['']);
-
-    const addExternalLink = () => setExternalLinks([...externalLinks, { label: '', url: '' }]);
-    const updateExternalLink = (i, field, v) => {
-        const next = [...externalLinks];
-        next[i] = { ...next[i], [field]: v };
-        setExternalLinks(next);
-    };
-    const removeExternalLink = (i) => setExternalLinks(externalLinks.length > 1 ? externalLinks.filter((_, idx) => idx !== i) : [{ label: '', url: '' }]);
 
     const applyFilters = (items) => {
         let result = [...items];
@@ -582,138 +463,6 @@ export default function ProfilePage() {
                 </div>
             </div>
 
-            {/* Modal */}
-            {showModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                        <div className="p-6">
-                            <h2 className="text-2xl font-slab font-bold mb-6 text-ncsu-gray uppercase tracking-tight">
-                                {editingId ? 'Edit News' : 'Add your News'}
-                            </h2>
-                            <form onSubmit={handleSubmit}>
-                                {/* Optional: import data from a LinkedIn post to prefill this form */}
-                                <div className="mb-4">
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Import from LinkedIn (optional)
-                                    </label>
-                                    <div className="flex flex-col gap-2 sm:flex-row">
-                                        <input
-                                            type="url"
-                                            value={linkedInUrl}
-                                            onChange={(e) => setLinkedInUrl(e.target.value)}
-                                            placeholder="Paste LinkedIn post URL"
-                                            className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-ncsu-red"
-                                        />
-                                        <button
-                                            type="button"
-                                            onClick={handleImportFromLinkedIn}
-                                            disabled={!linkedInUrl || isFetchingLinkedIn}
-                                            className="px-4 py-2 bg-ncsu-red text-white rounded-md text-sm disabled:opacity-50"
-                                        >
-                                            {isFetchingLinkedIn ? 'Fetching…' : 'Fetch details'}
-                                        </button>
-                                    </div>
-                                    {linkedInError && (
-                                        <p className="mt-1 text-xs text-red-600">
-                                            {linkedInError}
-                                        </p>
-                                    )}
-                                </div>
-                                <div className="mb-4">
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Title</label>
-                                    <textarea
-                                        rows={2}
-                                        value={title}
-                                        onChange={(e) => setTitle(e.target.value)}
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-ncsu-red font-sans resize-none overflow-hidden leading-tight"
-                                        required
-                                    />
-                                </div>
-                                <div className="mb-4">
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Content</label>
-                                    <textarea
-                                        value={content}
-                                        onChange={(e) => setContent(e.target.value)}
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-md h-40 focus:outline-none focus:ring-2 focus:ring-ncsu-red resize-y font-sans"
-                                        required
-                                    />
-                                </div>
-                                <div className="mb-4">
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Hashtags (comma-separated)</label>
-                                    <input
-                                        type="text"
-                                        value={hashtags}
-                                        onChange={(e) => setHashtags(e.target.value)}
-                                        placeholder="e.g. research, materials, engineering"
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-ncsu-red font-sans"
-                                    />
-                                </div>
-                                <div className="mb-4">
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Image URLs</label>
-                                    {imageUrls.map((url, i) => (
-                                        <div key={i} className="flex gap-2 mb-2">
-                                            <input
-                                                type="url"
-                                                value={url}
-                                                onChange={(e) => updateImageUrl(i, e.target.value)}
-                                                placeholder="https://example.com/image.jpg"
-                                                className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-ncsu-red"
-                                            />
-                                            {imageUrls.length > 1 && (
-                                                <button type="button" onClick={() => removeImageUrl(i)} className="px-3 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 text-sm">Remove</button>
-                                            )}
-                                        </div>
-                                    ))}
-                                    <button type="button" onClick={addImageUrl} className="text-sm text-ncsu-red hover:underline">+ Add image URL</button>
-                                </div>
-                                <div className="mb-6">
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">External Links</label>
-                                    {externalLinks.map((link, i) => (
-                                        <div key={i} className="mb-3 p-3 border border-gray-200 rounded-md">
-                                            <div className="flex gap-2 mb-2">
-                                                <input
-                                                    type="text"
-                                                    value={link.label}
-                                                    onChange={(e) => updateExternalLink(i, 'label', e.target.value)}
-                                                    placeholder="Link label"
-                                                    className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-ncsu-red"
-                                                />
-                                                <input
-                                                    type="url"
-                                                    value={link.url}
-                                                    onChange={(e) => updateExternalLink(i, 'url', e.target.value)}
-                                                    placeholder="https://example.com"
-                                                    className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-ncsu-red"
-                                                />
-                                                {externalLinks.length > 1 && (
-                                                    <button type="button" onClick={() => removeExternalLink(i)} className="px-3 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 text-sm">Remove</button>
-                                                )}
-                                            </div>
-                                        </div>
-                                    ))}
-                                    <button type="button" onClick={addExternalLink} className="text-sm text-ncsu-red hover:underline">+ Add link</button>
-                                </div>
-                                <div className="flex space-x-3 justify-end">
-                                    <button
-                                        type="button"
-                                        onClick={() => { setShowModal(false); resetForm(); }}
-                                        className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
-                                    >
-                                        Cancel
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        disabled={loading}
-                                        className="px-6 py-2 bg-ncsu-red text-white rounded-md font-medium hover:opacity-90 disabled:opacity-50"
-                                    >
-                                        {editingId ? 'Update' : 'Create'}
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     )
 }

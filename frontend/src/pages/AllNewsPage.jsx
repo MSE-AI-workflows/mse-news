@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, SlidersHorizontal, Edit3 } from 'lucide-react';
+import DOMPurify from 'dompurify';
 import api from '../api/client';
 import NewsCard from '../components/NewsCard';
 import ProfileSidebar from '../components/ProfileSidebar';
@@ -15,7 +16,30 @@ export default function AllNewsPage() {
   const [savedPosts, setSavedPosts] = useState([]);
   const [expandedId, setExpandedId] = useState(null);
   const [viewMode, setViewMode] = useState('all'); // 'all' or 'saved'
+  const [previewItem, setPreviewItem] = useState(null);
+  const [previewImageIdx, setPreviewImageIdx] = useState(0);
   const { filters, setFilters } = useFilters();
+
+  const openPreview = (item) => {
+    setPreviewImageIdx(0);
+    setPreviewItem(item);
+  };
+
+  useEffect(() => {
+    if (!previewItem) return;
+    document.body.style.overflow = 'hidden';
+    const images = previewItem.image_urls || [];
+    const handleKey = (e) => {
+      if (e.key === 'Escape') setPreviewItem(null);
+      if (e.key === 'ArrowLeft') setPreviewImageIdx((prev) => Math.max(0, prev - 1));
+      if (e.key === 'ArrowRight') setPreviewImageIdx((prev) => Math.min(images.length - 1, prev + 1));
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => {
+      document.body.style.overflow = '';
+      window.removeEventListener('keydown', handleKey);
+    };
+  }, [previewItem]);
 
   useEffect(() => {
     fetchNews();
@@ -90,16 +114,14 @@ export default function AllNewsPage() {
       result = result.filter((item) => (item.author_name || '').trim() === faculty);
     }
   
-    // Date: quick buttons or custom range
+    // Date: custom range takes priority over quick buttons
     const dateRange = filters.dateRange || 'all';
     const dateStart = filters.dateStart;
     const dateEnd = filters.dateEnd;
-    const useCustomRange = dateStart && dateEnd;
-  
-    if (useCustomRange) {
-      const start = new Date(dateStart);
-      const end = new Date(dateEnd);
-      end.setHours(23, 59, 59, 999);
+
+    if (dateStart || dateEnd) {
+      const start = dateStart ? new Date(dateStart + 'T00:00:00') : new Date(0);
+      const end = dateEnd ? new Date(dateEnd + 'T23:59:59.999') : new Date();
       result = result.filter((item) => {
         const d = new Date(item.created_at);
         return d >= start && d <= end;
@@ -123,6 +145,10 @@ export default function AllNewsPage() {
       });
     }
   
+    if (filters.excludeMine && user) {
+      result = result.filter((item) => item.author_email !== user.email);
+    }
+
     // Order by
     const orderBy = filters.orderBy || 'newest';
     result.sort((a, b) => {
@@ -134,9 +160,9 @@ export default function AllNewsPage() {
       if (orderBy === 'title-za') return tb.localeCompare(ta);
       return 0;
     });
-  
+
     return result;
-  }, [news, savedPosts, viewMode, filters.search, filters.faculty, filters.dateRange, filters.dateStart, filters.dateEnd, filters.orderBy]);
+  }, [news, savedPosts, viewMode, filters.search, filters.faculty, filters.dateRange, filters.dateStart, filters.dateEnd, filters.orderBy, filters.excludeMine, user]);
 
   const getInitials = (name) => {
     if (!name) return 'U';
@@ -201,6 +227,7 @@ export default function AllNewsPage() {
                   searchQuery={filters.search?.trim() || ''}
                   isSaved={savedPostIds.has(item.id)}
                   onToggleSave={handleToggleSave}
+                  onPreview={() => openPreview(item)}
                 />
               ))}
             </div>
@@ -271,19 +298,53 @@ export default function AllNewsPage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Custom date range</label>
                   <div className="space-y-2">
-                    <input
-                      type="date"
-                      value={filters.dateStart || ''}
-                      onChange={(e) => setFilters((prev) => ({ ...prev, dateStart: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ncsu-red"
-                    />
-                    <input
-                      type="date"
-                      value={filters.dateEnd || ''}
-                      onChange={(e) => setFilters((prev) => ({ ...prev, dateEnd: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ncsu-red"
-                    />
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-500 w-9 flex-shrink-0">Start</span>
+                      <input
+                        type="date"
+                        value={filters.dateStart || ''}
+                        max={new Date().toISOString().split('T')[0]}
+                        onChange={(e) => setFilters((prev) => ({ ...prev, dateStart: e.target.value, dateRange: 'all' }))}
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ncsu-red"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-500 w-9 flex-shrink-0">End</span>
+                      <input
+                        type="date"
+                        value={filters.dateEnd || ''}
+                        max={new Date().toISOString().split('T')[0]}
+                        onChange={(e) => setFilters((prev) => ({ ...prev, dateEnd: e.target.value, dateRange: 'all' }))}
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ncsu-red"
+                      />
+                    </div>
+                    {(filters.dateStart || filters.dateEnd) && (
+                      <button
+                        type="button"
+                        onClick={() => setFilters((prev) => ({ ...prev, dateStart: '', dateEnd: '' }))}
+                        className="text-xs text-ncsu-red hover:underline"
+                      >
+                        Clear custom dates
+                      </button>
+                    )}
                   </div>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium text-gray-700">Exclude my posts</label>
+                  <button
+                    type="button"
+                    onClick={() => setFilters((prev) => ({ ...prev, excludeMine: !prev.excludeMine }))}
+                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                      filters.excludeMine ? 'bg-ncsu-red' : 'bg-gray-300'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                        filters.excludeMine ? 'translate-x-4.5' : 'translate-x-0.5'
+                      }`}
+                    />
+                  </button>
                 </div>
 
                 <div>
@@ -293,9 +354,9 @@ export default function AllNewsPage() {
                       <button
                         key={r}
                         type="button"
-                        onClick={() => setFilters((prev) => ({ ...prev, dateRange: r }))}
+                        onClick={() => setFilters((prev) => ({ ...prev, dateRange: r, dateStart: '', dateEnd: '' }))}
                         className={`px-3 py-1.5 text-xs font-bold uppercase rounded-full border transition-all ${
-                          (filters.dateRange || 'all') === r
+                          (filters.dateRange || 'all') === r && !filters.dateStart && !filters.dateEnd
                             ? 'bg-ncsu-red text-white border-ncsu-red'
                             : 'text-gray-500 border-gray-200 hover:border-ncsu-red hover:text-ncsu-red'
                         }`}
@@ -310,6 +371,139 @@ export default function AllNewsPage() {
           </aside>
         </div>
       </div>
+
+      {/* Post Preview Modal — LinkedIn-style split layout */}
+      {previewItem && (() => {
+        const images = Array.isArray(previewItem.image_urls) ? previewItem.image_urls : [];
+        const hasImages = images.length > 0;
+
+        return (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
+            onClick={() => setPreviewItem(null)}
+          >
+            <div
+              className={`flex ${hasImages ? 'w-[95vw] max-w-6xl' : 'w-full max-w-2xl'} max-h-[90vh] bg-white rounded-lg shadow-2xl overflow-hidden`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Left: Image carousel */}
+              {hasImages && (
+                <div className="relative flex-shrink-0 w-[55%] bg-black flex items-center justify-center">
+                  <img
+                    src={images[previewImageIdx]}
+                    alt=""
+                    className="max-w-full max-h-[90vh] object-contain select-none"
+                  />
+
+                  {/* Previous arrow */}
+                  {images.length > 1 && previewImageIdx > 0 && (
+                    <button
+                      onClick={() => setPreviewImageIdx((i) => i - 1)}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 hover:bg-white shadow-lg flex items-center justify-center text-gray-700 transition-colors"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><polyline points="15 18 9 12 15 6" /></svg>
+                    </button>
+                  )}
+
+                  {/* Next arrow */}
+                  {images.length > 1 && previewImageIdx < images.length - 1 && (
+                    <button
+                      onClick={() => setPreviewImageIdx((i) => i + 1)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 hover:bg-white shadow-lg flex items-center justify-center text-gray-700 transition-colors"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><polyline points="9 18 15 12 9 6" /></svg>
+                    </button>
+                  )}
+
+                  {/* Image counter */}
+                  {images.length > 1 && (
+                    <span className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-black/60 text-white text-xs px-3 py-1 rounded-full">
+                      {previewImageIdx + 1} / {images.length}
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/* Right: Content panel */}
+              <div className={`flex flex-col ${hasImages ? 'w-[45%]' : 'w-full'} max-h-[90vh]`}>
+                {/* Header */}
+                <div className="flex items-start justify-between p-5 border-b border-gray-200 flex-shrink-0">
+                  <div className="flex items-start gap-3">
+                    <div className="w-12 h-12 rounded-full bg-ncsu-gray text-white flex items-center justify-center text-sm font-bold flex-shrink-0">
+                      {getInitials(previewItem.author_name || previewItem.author_email || 'U')}
+                    </div>
+                    <div>
+                      {previewItem.author_name && (
+                        <p className="font-semibold text-gray-900">{previewItem.author_name}</p>
+                      )}
+                      {previewItem.author_email && (
+                        <p className="text-xs text-gray-500">{previewItem.author_email}</p>
+                      )}
+                      {previewItem.created_at && (
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          {new Date(previewItem.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setPreviewItem(null)}
+                    className="text-gray-400 hover:text-gray-600 text-2xl leading-none px-2 flex-shrink-0"
+                  >
+                    ×
+                  </button>
+                </div>
+
+                {/* Scrollable body */}
+                <div className="flex-1 overflow-y-auto p-5 space-y-3">
+                  {previewItem.title && (
+                    <h2 className="text-lg font-bold text-gray-900 break-words">{previewItem.title}</h2>
+                  )}
+
+                  {previewItem.content && (
+                    /<[a-z][\s\S]*>/i.test(previewItem.content) ? (
+                      <div
+                        className="text-gray-700 text-sm leading-relaxed [&_a]:text-ncsu-red [&_a]:hover:underline [&_p]:mb-2 [&_p:last-child]:mb-0"
+                        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(previewItem.content) }}
+                      />
+                    ) : (
+                      <div className="text-gray-700 text-sm leading-relaxed whitespace-pre-line">
+                        {previewItem.content}
+                      </div>
+                    )
+                  )}
+
+                  {Array.isArray(previewItem.hashtags) && previewItem.hashtags.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {previewItem.hashtags.map((tag, i) => (
+                        <span key={i} className="px-2 py-0.5 rounded text-xs font-medium bg-ncsu-red/10 text-ncsu-red">
+                          #{tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {Array.isArray(previewItem.external_links) && previewItem.external_links.length > 0 && (
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      {previewItem.external_links.map((link, i) => (
+                        <a
+                          key={i}
+                          href={link.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm text-ncsu-red hover:underline"
+                        >
+                          {link.label || link.url}
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

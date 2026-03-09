@@ -6,7 +6,8 @@ const defaultFilters = {
   dateRange: 'all',
   orderBy: 'newest',
   dateStart: '',
-  dateEnd: ''
+  dateEnd: '',
+  excludeMine: false,
 };
 
 const FilterContext = createContext();
