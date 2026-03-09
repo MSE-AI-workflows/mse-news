@@ -195,20 +195,22 @@ export default function NewsCard({
               ))}
             </div>
           ) : item.image_urls.length === 3 ? (
-            <div className="grid grid-cols-2 gap-0.5">
+            <div className="grid grid-cols-2 grid-rows-2 gap-0.5 max-h-[400px]">
               <img
                 src={item.image_urls[0]}
                 alt=""
-                className="w-full object-cover aspect-square row-span-2"
+                className="w-full h-full object-cover row-span-2"
               />
-              {item.image_urls.slice(1, 3).map((url, i) => (
-                <img
-                  key={i}
-                  src={url}
-                  alt=""
-                  className="w-full object-cover aspect-square"
-                />
-              ))}
+              <img
+                src={item.image_urls[1]}
+                alt=""
+                className="w-full h-full object-cover"
+              />
+              <img
+                src={item.image_urls[2]}
+                alt=""
+                className="w-full h-full object-cover"
+              />
             </div>
           ) : (() => {
             const extra = item.image_urls.length - 4;
