@@ -5,7 +5,14 @@ export default function Layout({ children, user, onLogout, onNavigate, activeVie
     return (
         <div className="min-h-screen flex flex-col bg-[#f2f2f2] font-sans">
             <div className='bg-black text-white text-[10px] px-4 py-1 flex justify-end gap-4 uppercase font-bold tracking-wider'>
-                <span>ncsu.edu</span>
+                <a
+                  href="https://www.ncsu.edu/"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="hover:underline"
+                >
+                  ncsu.edu
+                </a>
                 <span>Directory</span>
                 <span>Libraries</span>
                 <span>MyPack Portal</span>
